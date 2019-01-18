@@ -1,14 +1,14 @@
 module ptgibbs
 
-import Distributed
-import Statistics
-import Distributions
-import LinearAlgebra
-import StatsBase
-import Lazy
-import RLEVectors
-import ProgressMeter
-import DataFrames
+using Distributed
+using Statistics
+using Distributions
+using LinearAlgebra
+using StatsBase
+using Lazy
+using RLEVectors
+using ProgressMeter
+using DataFrames
 
 export tapply_mean
 function tapply_mean(subs, val, sz=(maximum(subs),))

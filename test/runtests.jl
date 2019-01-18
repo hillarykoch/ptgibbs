@@ -2,7 +2,7 @@ using ptgibbs
 import ptgibbs: run_mcmc
 using Test
 using CategoricalArrays
-
+using StatsBase
 using DataFrames
 using Distributed
 using LinearAlgebra

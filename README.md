@@ -1,7 +1,8 @@
 # ptgibbs
 
 Companion Julia module for pGMCM R package
-**this package was developed in julia v1.0.2**
+
+**NOTE: this package was developed in julia v1.0.2, and likely is not back-compatible with older versions**
 
 ## Installation
 
@@ -17,3 +18,4 @@ Load and test the package by doing the following (optional):
 using ptgibbs
 Pkg.test("ptgibbs")
 ```
+

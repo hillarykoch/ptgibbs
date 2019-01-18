@@ -1,0 +1,21 @@
+name = "ptgibbs"
+uuid = "65cc45ec-1b5e-11e9-320b-eb57cbff140c"
+authors = ["Hillary Koch <hbk5086@psu.edu>"]
+version = "0.1.0"
+
+[deps]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+Lazy = "50d2b5c4-7a5e-59d5-8109-a42b560f39c0"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
+RLEVectors = "17b45ede-fd0d-54ef-b825-8cf9fc64da95"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

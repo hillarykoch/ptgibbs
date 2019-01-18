@@ -71,12 +71,12 @@ nstep = 500;
 burnin = 10;
 
 # Define log likelihood and log prior functions
-ll = mcmc_functions.loglike;
-lp = mcmc_functions.logprior;
+ll = ptgibbs.loglike;
+lp = ptgibbs.logprior;
 
 # Run chain
 chain, _, _, _ =
-        mcmc_functions.run_mcmc(df1[[:x,:y]], param, hyp, alpha, ll, lp, betas, nstep, burnin);
+        ptgibbs.run_mcmc(df1[[:x,:y]], param, hyp, alpha, ll, lp, betas, nstep, burnin);
 
 # Compute some estimates and get cluster labels
 norm_chain = map(x -> x[1], chain[:,1,:]);

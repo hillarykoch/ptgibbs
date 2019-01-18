@@ -13,7 +13,7 @@ using Pkg
 Pkg.add(PackageSpec(url="https://github.com/hillarykoch/ptgibbs.jl"))
 ```
 
-Load and test the package by doing the following (optional):
+Load and test the package by then doing the following from inside julia (optional):
 ```{julia}
 using ptgibbs
 Pkg.test("ptgibbs")

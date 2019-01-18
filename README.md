@@ -18,4 +18,14 @@ Load and test the package by doing the following (optional):
 using ptgibbs
 Pkg.test("ptgibbs")
 ```
+If things went as they should, you should see:
+```console
+Testing ptgibbs
 
+Computing for burn-in...100%|███████████████████████████|
+Computing for main Markov chain...100%|█████████████████|
+
+Test Summary:                  | Pass  Total
+reasonable parameter estimates |   10     10
+Testing ptgibbs tests passed
+```

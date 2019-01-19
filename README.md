@@ -1,4 +1,4 @@
-# ptgibbs
+# ptgibbs.jl
 
 Companion Julia module for pGMCM R package
 

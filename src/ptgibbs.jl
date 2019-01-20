@@ -397,38 +397,27 @@ function make_tswap(param, lnlikes, lnpriors, betas)
     new_param, new_lnlikes, new_lnpriors, tswaps
 end
 
-"""
-    tevolve(swapfraction, betas, tc)
-
-Returns `new_betas`, which are evolved according to a rule to equalise
-temperature swap rates over a timescale `tc`.
-
-The rule is formulated in terms of a quantity `x[i]`, which is the logit
-transform of `beta[i]` relative to its neighbours (recall that `beta` is the
-*inverse* temperature, so decreases as `i` increases):
-
-    x[i] = log(beta[i] - beta[i+1]) - log(beta[i-1] - beta[i])
-
-`x` maps the range between `beta[i+1]` and `beta[i-1]` to `-Inf` to `Inf`.  We
-evolve `x` via
-
-    x_new[i] = x[i] + 2.0*(swapfraction[i] - swapfraction[i-1])/(tc*(swapfraction[i] + swapfraction[i-1]))
-
-where `swapfraction[i]` measures the fraction of accepted swaps between
-temperature `i` and temperature `i+1` (i.e. between chain `i` and the
-next-highest temperature chain) and `tc` is a "time constant" that controls the
-(exponential) rate of convergence of `x`.
-
-This is similar to the evolution rule in [Vousden, Farr, & Mandel
-(2016)](https://ui.adsabs.harvard.edu/#abs/2016MNRAS.455.1919V/abstract).
-
-"""
-
 export tevolve
 function tevolve(swapfraction, betas, tc)
     """
-    * tc is the "time constant" controlling the convergence rate
-    * swapfraction is tswaps/nw (tswaps output from make_tswap)
+    Temperature evolution is formulated in terms of a quantity `x[i]`, which is the logit
+    transform of `beta[i]` relative to its neighbours (`beta` is the
+    inverse temperature, so decreases as `i` increases):
+
+        x[i] = log(beta[i] - beta[i+1]) - log(beta[i-1] - beta[i])
+
+    `x` maps the range between `beta[i+1]` and `beta[i-1]` to `-Inf` to `Inf`.  We
+    evolve `x` via
+
+        x_new[i] = x[i] + 2.0*(swapfraction[i] - swapfraction[i-1])/(tc*(swapfraction[i] + swapfraction[i-1]))
+
+    where `swapfraction[i]` measures the fraction of accepted swaps between
+    temperature `i` and temperature `i+1` (i.e. between chain `i` and the
+    next-highest temperature chain) and `tc` is a "time constant" that controls the
+    (exponential) rate of convergence of `x`.
+
+    This is similar to the evolution rule in [Vousden, Farr, & Mandel
+    (2016)](https://ui.adsabs.harvard.edu/#abs/2016MNRAS.455.1919V/abstract).
     """
     new_betas = copy(betas)
 
@@ -448,7 +437,15 @@ function tevolve(swapfraction, betas, tc)
 end
 
 export run_mcmc
-function run_mcmc(dat, param, hyp, alpha, loglike, logprior, betas, nstep, burnin)
+function run_mcmc(dat::DataFrame,
+                    param::Array,
+                    hyp::Tuple,
+                    alpha::Array{Float64,1},
+                    loglike,
+                    logprior,
+                    betas::Array{Float64,1},
+                    nstep::Int64,
+                    burnin::Int64)
     """
       The function will return `(chain, chainloglike, chainlogprior, new_betas)` where
         each returned chain value has an extra dimension appended counting steps of the
@@ -517,6 +514,92 @@ function run_mcmc(dat, param, hyp, alpha, loglike, logprior, betas, nstep, burni
     end
 
     chain, chainlnlike, chainlnprior, betas
+end
+
+export get_mu_chain
+function get_mu_chain(chain, walker_num, cluster_num)
+    """
+    For a given walker and cluster number, return
+        the corresponding chain of mu estimates in each dimension
+    This is used to pass results back to R via JuliaCall
+    """
+    nw, nt, nstep = size(chain)
+    nm =  size(chain[1,1,1][1], 1)
+    @assert nw >= walker_num "walker_num must be less than or equal to the number of walkers"
+    @assert nm >= cluster_num "cluster_num must be less than or equal to the number of clusters"
+
+    # The first line extracts NIW part of the chain
+    # Then, get mu for given walker and cluster number
+    # Shoud be a dm x nstep chain (dm is dimension of data)
+    mu_chain = @as mu_chain map(x -> x[1], chain[:,1,:]) begin
+        @>> mapslices(x -> x[walker_num], mu_chain; dims = 1)
+        @>> mapslices(x -> x[cluster_num], mu_chain; dims = 1)
+        @>> map(x -> get(x, "mu", 0), mu_chain)
+        @> hcat(mu_chain...)
+    end
+    return mu_chain
+end
+
+export get_Sigma_chain
+function get_Sigma_chain(chain, walker_num, cluster_num)
+    """
+    For a given walker and cluster number, return
+        the corresponding chain of covariance estimates in each dimension
+    This is used to pass results back to R via JuliaCall
+    """
+    nw, nt, nstep = size(chain)
+    nm =  size(chain[1,1,1][1], 1)
+    dm = size(get(chain[1,1,1][1][1], "Sigma", 0), 1)
+    @assert nw >= walker_num "walker_num must be less than or equal to the number of walkers"
+    @assert nm >= cluster_num "cluster_num must be less than or equal to the number of clusters"
+
+    # The first line extracts NIW part of the chain
+    # Then, get mu for given walker and cluster number
+    # Shoud be a dm x dm x nstep array of Sigma estimates (dm is dimension of data)
+    Sigma_chain = @as Sigma_chain map(x -> x[1], chain[:,1,:]) begin
+        @>> mapslices(x -> x[walker_num], Sigma_chain; dims = 1)
+        @>> mapslices(x -> x[cluster_num], Sigma_chain; dims = 1)
+        @>> map(x -> get(x, "Sigma", 0), Sigma_chain)
+        @> hcat(Sigma_chain...)
+        @> reshape(Sigma_chain, (dm, dm, nstep))
+    end
+    
+    return Sigma_chain
+end
+
+export get_prop_chain
+function get_prop_chain(chain, walker_num)
+    """
+    For a given walker, return the corresponding
+        chain of mixing weight estimates for each cluster
+    This is used to pass results back to R via JuliaCall
+    """
+    nw, nt, nstep = size(chain)
+    @assert nw >= walker_num "walker_num must be less than or equal to the number of walkers"
+
+    # Shoud be a nm x nstep chain
+    prop_chain = hcat(map(x -> x[2], chain[:,1,:])[walker_num,:]...)
+
+    return prop_chain
+end
+
+export get_z_chain
+function get_z_chain(chain, walker_num)
+    """
+    For a given walker, return the
+        corresponding chain of z estimates for each cluster and each observation
+    This is used to pass results back to R via JuliaCall
+    """
+    nw, nt, nstep = size(chain)
+    @assert nw >= walker_num "walker_num must be less than or equal to the number of walkers"
+
+    # Returns an n x nstep chain of cluster labels for each observation across the whole chain
+    z_chain = @as z_chain map(x -> x[3], chain[:,1,:]) begin
+                @> z_chain[walker_num,:]
+                @> hcat(z_chain...)
+            end
+
+    return z_chain
 end
 
 end # End the module

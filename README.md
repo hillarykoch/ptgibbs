@@ -25,7 +25,7 @@ Testing ptgibbs
 Computing for burn-in...100%|███████████████████████████|
 Computing for main Markov chain...100%|█████████████████|
 
-Test Summary:                  | **Pass**  **Total**
-reasonable parameter estimates |   **10**     **10**
-**Testing** ptgibbs tests passed
+Test Summary:                  | Pass  Total
+reasonable parameter estimates |   10     10
+Testing ptgibbs tests passed
 ```

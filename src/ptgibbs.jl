@@ -563,7 +563,7 @@ function get_Sigma_chain(chain, walker_num, cluster_num)
         @> hcat(Sigma_chain...)
         @> reshape(Sigma_chain, (dm, dm, nstep))
     end
-    
+
     return Sigma_chain
 end
 

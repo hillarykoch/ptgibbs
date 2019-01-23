@@ -2,7 +2,7 @@ module ptgibbs
 
 include("constrained.jl")
 
-import StatsBase: rle
+import StatsBase: rle, pweights
 import RLEVectors: rep
 import DataFrames: DataFrame, colwise
 

@@ -1,5 +1,6 @@
 module ptgibbs
 
+include("ptgibbs_constrained.jl")
 using Distributed
 using Statistics
 using Distributions

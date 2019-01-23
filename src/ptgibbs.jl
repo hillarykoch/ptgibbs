@@ -9,7 +9,8 @@ import DataFrames: DataFrame, colwise
 using Distributed
 using Statistics
 using Distributions
-using LinearAlgebrausing Lazy
+using LinearAlgebra
+using Lazy
 using ProgressMeter
 #using DataFrames
 

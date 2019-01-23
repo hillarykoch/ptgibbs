@@ -1,15 +1,17 @@
 
 using ptgibbs
+
 import ptgibbs: run_mcmc
+import StatsBase: rle
+import RLEVectors: rep
+import DataFrames: DataFrame, colwise, categorical!
+
 using Test
-using CategoricalArrays
-using StatsBase
-using DataFrames
 using Distributed
 using LinearAlgebra
 using Lazy
 using Distributions
-using RLEVectors
+
 
 # Instantiate parameters for test model
 nw = 2; # number of walkers per temp
@@ -152,7 +154,7 @@ z_chain = map(x -> x[3], chain[:,1,:]);
 z_est = @> begin
                 hcat(hcat(z_chain[1,:]...), hcat(z_chain[2,:]...))
                 @>> mapslices(sort; dims = 2)
-                @>> mapslices(StatsBase.rle; dims = 2)
+                @>> mapslices(rle; dims = 2)
                 @>> map(x -> x[1][argmax(x[2])])
                 @> reshape((n,))
 end;

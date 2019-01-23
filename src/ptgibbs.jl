@@ -1,15 +1,18 @@
 module ptgibbs
 
-include("ptgibbs_constrained.jl")
+include("constrained.jl")
+
+import StatsBase: rle
+import RLEVectors: rep
+import DataFrames: colwise
+
 using Distributed
 using Statistics
 using Distributions
 using LinearAlgebra
-using StatsBase
 using Lazy
-using RLEVectors
 using ProgressMeter
-using DataFrames
+#using DataFrames
 
 export tapply_mean
 function tapply_mean(subs, val, sz=(maximum(subs),))
@@ -20,34 +23,6 @@ function tapply_mean(subs, val, sz=(maximum(subs),))
         @inbounds counter[subs[i]] += 1
     end
     A./counter
-end
-
-export propose_prop
-function propose_prop(prop; tune_var=0.05)
-    """
-    * prop is an nw x nt array of mixing proportions, each with length-nm entries
-    * tune_var is an adaptive tuning variance for the proposal
-        (this should be updated so that each walker tracks its own tuning variance)
-    * nm is the cluster number
-    * nw is the number of walkers
-    * nt is the number of temperatures
-    * Possibly need to be storing the dimension of data as well
-    """
-    nw, nt = size(prop)
-    @inbounds nm = size(prop[1])[1]
-    prop_out = copy(prop)
-
-    # For each walker, at each temperature,
-    #   make a new proposal for mixing proportions
-    for i in 1:nw
-        for j in 1:nt
-            @inbounds log_prop = log.(prop[i,j])
-            log_proposal = rand(MvNormal(log_prop, Matrix{Float64}(I,nm,nm) * sqrt(tune_var)))
-            proposal = exp.(log_proposal)
-            @inbounds prop_out[i,j] = proposal / sum(proposal)
-        end
-    end
-    prop_out
 end
 
 export make_gibbs_update
@@ -88,7 +63,8 @@ function make_gibbs_update(dat, hyp, z, prop, alpha)
                 for the current walker, current temperature
             """
             # xbar is an array of d dictionaries
-            xbar = @views DataFrames.colwise(x -> tapply_mean(z[i,j], x), dat)
+            #xbar = @views DataFrames.colwise(x -> tapply_mean(z[i,j], x), dat)
+            xbar = @views colwise(x -> tapply_mean(z[i,j], x), dat)
 
             """
             Draw NIW random variables
@@ -303,14 +279,10 @@ function make_mcmc_move(dat, param, hyp, alpha, ll, lp, betas)
     z = map(x -> x[3], param)
 
     """
-    1. Make gibbs updates of mus, Sigmas, and cluster labels
+    1. Make gibbs updates of mus, Sigmas, mixing weights, and cluster labels
         * z is an int nw x nt dimensional array, where each entry is of length n
             classifying each observation for each walker and temperature
         * NIW is an an nw x nt array of dictionaries, each with nm keys "mu" and "Sigma"
-    2. Propose new mixing proportions
-        * prop_star is an nw x nt array of proposed mixing proportions,
-            where each entry is of length nm
-        * tune_var needs to be updated eventually, right now it is static
     3. Compute the log-likelihood and log prior at the prop_star proposal
     4. Compute the hastings ratio for the proposed mixing proportions
     """

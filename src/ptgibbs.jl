@@ -53,7 +53,7 @@ function make_gibbs_update(dat, hyp, z, prop, alpha)
             rles = @> begin
                     @inbounds z[i,j]
                     @>sort()
-                    @>StatsBase.rle()
+                    @>rle()
                 end
             nz = zeros(nm)
             @inbounds nz[rles[1]] = rles[2]
@@ -147,7 +147,7 @@ function make_gibbs_update(dat, hyp, z, prop, alpha)
             rles = @> begin
                 z[i,j]
                 @>sort()
-                @>StatsBase.rle()
+                @>rle()
             end
             nz = zeros(nm)
             nz[rles[1]] = rles[2]

@@ -4,7 +4,7 @@ include("constrained.jl")
 
 import StatsBase: rle
 import RLEVectors: rep
-import DataFrames: colwise
+import DataFrames: DataFrame, colwise
 
 using Distributed
 using Statistics

@@ -1,3 +1,4 @@
+
 using ptgibbs
 import ptgibbs: run_mcmc
 using Test
@@ -55,8 +56,8 @@ for i in 1:nw
         for j in 1:nt
                 dictionary = Dict{String,Array{Float64,N} where N}[]
                 for m in 1:nm
-                        Sigma = rand(InverseWishart(500, 500 * 2 * Matrix{Float64}(I,dm,dm)))
-                        mu = rand(MvNormal(mu0[m,:], Sigma / 500))
+                        Sigma = rand(InverseWishart(nu0[m], nu0[m] * Matrix{Float64}(I,dm,dm)))
+                        mu = rand(MvNormal(mu0[m,:], Sigma / nu0[m]))
                         push!(dictionary, Dict("mu" => mu, "Sigma" => Sigma))
                 end
                 initprop = rand(Dirichlet(alpha))

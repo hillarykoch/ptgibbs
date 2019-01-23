@@ -87,7 +87,7 @@ function make_gibbs_update(dat, hyp, z, prop, alpha)
                 for the current walker, current temperature
             """
             # xbar is an array of d dictionaries
-            xbar = DataFrames.colwise(x -> tapply_mean(z[i,j], x), dat)
+            xbar = @views DataFrames.colwise(x -> tapply_mean(z[i,j], x), dat)
 
             """
             Draw NIW random variables
@@ -215,14 +215,13 @@ function loglike(param::Tuple{Array{Dict{String,Array{Float64,N} where N},1},Arr
     end
 
     # Convert density to probabilities
-    prob = @> begin
+    @views prob = @> begin
             p'
             @>exp.()
-            @>>mapslices(x -> all(x .== 0.0) ? rep(1, times = nm) : x, dims = 1)
-            @>>mapslices(x -> x/sum(x), dims = 1)
+            @>> mapslices(x -> all(x .== 0.0) ? rep(1, times = nm) : x, dims = 1)
+            @>> mapslices(x -> x/sum(x), dims = 1)
     end
 
-    #z = Int64.(z)
     mult_distns = mapslices(x -> Multinomial(1,x), prob, dims = 1)
     ll_mult = zeros(n)
     for i in 1:n
@@ -280,7 +279,7 @@ function lnlikes_lnpriors(dat, param, alpha, ll, lp)
     if nworkers() > 1
         # unfolds param column-wise
         parr = reshape(param, nw*nt)
-        lls_lps = pmap(x -> lnlike_lnprior(dat, x, alpha, ll, lp), parr, batch_size=max(div(nw*nt,4*nworkers()),1))
+        lls_lps = pmap(x -> lnlike_lnprior(dat, x, alpha, ll, lp), parr)
         lls = reshape(Float64[l for (l,p) in lls_lps], (nw, nt))
         lps = reshape(Float64[p for (l,p) in lls_lps], (nw, nt))
     else
@@ -419,7 +418,7 @@ function tevolve(swapfraction, betas, tc)
     This is similar to the evolution rule in [Vousden, Farr, & Mandel
     (2016)](https://ui.adsabs.harvard.edu/#abs/2016MNRAS.455.1919V/abstract).
     """
-    new_betas = copy(betas)
+    new_betas = deepcopy(betas)
 
     # This seems problematic if number of temperatures is < 3
     for i in 2:size(betas, 1)-1
@@ -464,6 +463,8 @@ function run_mcmc(dat::DataFrame,
             across walkers and temperatures
       * the time constant is one quarter of burnin
     """
+    ll = loglike
+    lp = logprior
 
     # Instantiate each object to the correct size
     nw, nt = size(param)
@@ -524,7 +525,7 @@ function get_mu_chain(chain, walker_num, cluster_num)
     This is used to pass results back to R via JuliaCall
     """
     nw, nt, nstep = size(chain)
-    nm =  size(chain[1,1,1][1], 1)
+    nm = size(chain[1,1,1][1], 1)
     @assert nw >= walker_num "walker_num must be less than or equal to the number of walkers"
     @assert nm >= cluster_num "cluster_num must be less than or equal to the number of clusters"
 
@@ -532,8 +533,8 @@ function get_mu_chain(chain, walker_num, cluster_num)
     # Then, get mu for given walker and cluster number
     # Shoud be a dm x nstep chain (dm is dimension of data)
     mu_chain = @as mu_chain map(x -> x[1], chain[:,1,:]) begin
-        @>> mapslices(x -> x[walker_num], mu_chain; dims = 1)
-        @>> mapslices(x -> x[cluster_num], mu_chain; dims = 1)
+        @>> @views mapslices(x -> x[walker_num], mu_chain; dims = 1)
+        @>> @views mapslices(x -> x[cluster_num], mu_chain; dims = 1)
         @>> map(x -> get(x, "mu", 0), mu_chain)
         @> hcat(mu_chain...)
     end
@@ -557,8 +558,8 @@ function get_Sigma_chain(chain, walker_num, cluster_num)
     # Then, get mu for given walker and cluster number
     # Shoud be a dm x dm x nstep array of Sigma estimates (dm is dimension of data)
     Sigma_chain = @as Sigma_chain map(x -> x[1], chain[:,1,:]) begin
-        @>> mapslices(x -> x[walker_num], Sigma_chain; dims = 1)
-        @>> mapslices(x -> x[cluster_num], Sigma_chain; dims = 1)
+        @>> @views mapslices(x -> x[walker_num], Sigma_chain; dims = 1)
+        @>> @views mapslices(x -> x[cluster_num], Sigma_chain; dims = 1)
         @>> map(x -> get(x, "Sigma", 0), Sigma_chain)
         @> hcat(Sigma_chain...)
         @> reshape(Sigma_chain, (dm, dm, nstep))

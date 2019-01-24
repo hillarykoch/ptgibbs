@@ -1,3 +1,15 @@
+
+import StatsBase: rle, pweights
+import RLEVectors: rep
+import DataFrames: DataFrame, colwise
+
+using Distributed
+using Statistics
+using Distributions
+using LinearAlgebra
+using Lazy
+using ProgressMeter
+
 """
 In R, can obtain an MxD matrix corresponding to the M classes described
   by a length-D ternary vector. Call this *red_class*

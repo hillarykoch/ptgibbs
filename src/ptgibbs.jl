@@ -2,6 +2,17 @@ module ptgibbs
 
 include("constrained.jl")
 
+import StatsBase: rle, pweights
+import RLEVectors: rep
+import DataFrames: DataFrame, colwise
+
+using Distributed
+using Statistics
+using Distributions
+using LinearAlgebra
+using Lazy
+using ProgressMeter
+
 export tapply_mean
 function tapply_mean(subs, val, sz=(maximum(subs),))
     A = zeros(eltype(val), sz...)

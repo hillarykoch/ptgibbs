@@ -1,6 +1,8 @@
 module ptgibbs
 
 include("constrained.jl")
+include("single.jl")
+include("single_constrained.jl")
 
 import StatsBase: rle, pweights
 import RLEVectors: rep

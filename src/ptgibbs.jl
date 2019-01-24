@@ -12,7 +12,6 @@ using Distributions
 using LinearAlgebra
 using Lazy
 using ProgressMeter
-#using DataFrames
 
 export tapply_mean
 function tapply_mean(subs, val, sz=(maximum(subs),))
@@ -63,7 +62,6 @@ function make_gibbs_update(dat, hyp, z, prop, alpha)
                 for the current walker, current temperature
             """
             # xbar is an array of d dictionaries
-            #xbar = @views DataFrames.colwise(x -> tapply_mean(z[i,j], x), dat)
             xbar = @views colwise(x -> tapply_mean(z[i,j], x), dat)
 
             """
@@ -78,7 +76,7 @@ function make_gibbs_update(dat, hyp, z, prop, alpha)
                     xbarmap = map(x -> x[m], xbar)
 
                     # Draw from the posterior (I don't have the additional ifelse that is in my R code here)
-                    Sigma = rand(
+                    @inbounds Sigma = rand(
                                 InverseWishart(kappa0[m] + nz[m],
                                                round.(Psi0[:,:,m] * kappa0[m] +
                                                   (Matrix(dat[z[i,j] .== m,:]) .- xbarmap')' *
@@ -87,7 +85,7 @@ function make_gibbs_update(dat, hyp, z, prop, alpha)
                                                        (xbarmap - mu0[m,:]) *  (xbarmap - mu0[m,:])'; digits=6)
                             )
                     )
-                    mu = rand(
+                    @inbounds mu = rand(
                             MvNormal(
                                 (kappa0[m] * mu0[m,:] + nz[m] * xbarmap) / (kappa0[m] + nz[m]),
                                 Sigma / (kappa0[m] + nz[m])
@@ -96,12 +94,12 @@ function make_gibbs_update(dat, hyp, z, prop, alpha)
                     @inbounds NIW[i,j,m] = Dict("mu" => mu, "Sigma" => Sigma)
                 else
                     # Draw from the prior
-                    Sigma = rand(
+                    @inbounds Sigma = rand(
                                 InverseWishart(kappa0[m],
                                                Psi0[:,:,m] * kappa0[m]
                             )
                     )
-                    mu = rand(
+                    @inbounds mu = rand(
                             MvNormal(
                                 mu0[m,:],
                                 Sigma / kappa0[m]
@@ -274,7 +272,6 @@ end
 export make_mcmc_move
 function make_mcmc_move(dat, param, hyp, alpha, ll, lp, betas)
     nw, nt = size(param)
-    NIW = map(x -> x[1], param)
     prop = map(x -> x[2], param)
     z = map(x -> x[3], param)
 

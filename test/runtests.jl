@@ -20,7 +20,8 @@ dm = 2; # dimension of data
 mu1 = [0,0];
 mu2 = [4,4];
 mu3 = [-2.5,6];
-sig1 = Matrix{Float64}(I,dm,dm)*2;
+#labels = ["11", "22", "02"]
+sig1 = Matrix{Float64}(I,dm,dm)
 sig2 = Matrix{Float64}(I,dm,dm)*1.2 .+ .7;
 sig3 = reshape([.85, .6, .6,.95], (2,2));
 prop = [.2,.45, .35];
@@ -130,7 +131,7 @@ mu_ests = [
         end
         ]];
 
-prop_chain = map(x -> x[2], chain[:,1,:])
+prop_chain = map(x -> x[2], chain[:,1,:]);
 prop_est = [
         @> begin
                 prop_chain

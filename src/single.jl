@@ -94,19 +94,10 @@ end
 export lnlikes_lnpriors_beta1
 function lnlikes_lnpriors_beta1(dat, param, alpha, ll, lp)
     nw = size(param, 1)
-
-    # If there is capacity to parallelize, then parallelize
-    if nworkers() > 1
-        # unfolds param column-wise
-        lls_lps = pmap(x -> lnlike_lnprior(dat, x, alpha, ll, lp), param)
-        lls = reshape(Float64[l for (l,p) in lls_lps], (nw, 1))
-        lps = reshape(Float64[p for (l,p) in lls_lps], (nw, 1))
-    else
-        lls = zeros(nw, 1)
-        lps = zeros(nw, 1)
-        for i in 1:nw
-            @inbounds lls[i,1], lps[i,1] = lnlike_lnprior(dat, param[i], alpha, ll, lp)
-        end
+    lls = zeros(nw, 1)
+    lps = zeros(nw, 1)
+    for i in 1:nw
+        @inbounds lls[i,1], lps[i,1] = lnlike_lnprior(dat, param[i], alpha, ll, lp)
     end
     (lls, lps)
 end

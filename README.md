@@ -30,6 +30,10 @@ reasonable parameter estimates |   10     10
 Testing ptgibbs tests passed
 ```
 
+
 ---------------------------------------------------------------------------------------------------------------------------------------
 
-*This package was originally designed with a Metropolis proposal for the mixing weights in the mixture (now, it is Gibbs). Since all updates are Gibbs, there is no need for the ``tempered'' portion of the algorithm. A tempered and standard version are supported, in case of offering versions with Metropolis proposals in the future.*
+---------------------------------------------------------------------------------------------------------------------------------------
+
+
+*This package was originally designed with a Metropolis proposal for the mixing weights in the model (now, it is Gibbs). Since all updates are Gibbs, there is no need for the ''tempered'' portion of the algorithm. A tempered and standard version are nevertheless supported, in case of offering versions with Metropolis proposals in the future.*

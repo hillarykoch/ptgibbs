@@ -112,9 +112,9 @@ function make_beta1_mcmc_move(dat, param, hyp, alpha, ll, lp)
 
     # Update param to reflect gibbs updates
     for i in 1:nw
-        map!(x -> x, param[i,1][1], NIW[i,1,:])
-        map!(x -> x, param[i,1][2], prop[i])
-        map!(x -> x, param[i,1][3], z[i])
+        @inbounds map!(x -> x, param[i,1][1], NIW[i,:])
+        @inbounds map!(x -> x, param[i,1][2], prop[i])
+        @inbounds map!(x -> x, param[i,1][3], z[i])
     end
 
     llps, lpps = lnlikes_lnpriors_beta1(dat, param, alpha, ll, lp)

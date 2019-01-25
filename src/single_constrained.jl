@@ -212,7 +212,7 @@ function make_constr_beta1_mcmc_move(dat, param, hyp, alpha, ll, lp, labels)
 
     # Update param to reflect gibbs updates
     for i in 1:nw
-        map!(x -> x, param[i,1][1], NIW[i,1,:])
+        map!(x -> x, param[i,1][1], NIW[i,:])
         map!(x -> x, param[i,1][2], prop[i])
         map!(x -> x, param[i,1][3], z[i])
     end

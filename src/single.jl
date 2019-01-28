@@ -52,14 +52,14 @@ function make_beta1_gibbs_update(dat, hyp, z, prop, alpha)
             else
                 # Draw from the prior
                 @inbounds Sigma = rand(
-                            InverseWishart(kappa0[m],
-                                              Psi0[:,:,m] * kappa0[m]
+                            InverseWishart(max(kappa0[m], dm),
+                                              Psi0[:,:,m] * max(kappa0[m], dm)
                         )
                 )
                 @inbounds mu = rand(
                         MvNormal(
                             mu0[m,:],
-                            Sigma / kappa0[m]
+                            Sigma / max(kappa0[m], dm)
                         )
                 )
                 @inbounds NIW[i,m] = Dict("mu" => mu, "Sigma" => Sigma)

@@ -120,11 +120,11 @@ function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
                 xbarmap = map(x -> x[m], xbar)
                 # Draw from the posterior (I don't have the additional ifelse that is in my R code here)
                 @inbounds Sigma = rand(
-                            InverseWishart(kappa0[m] + nz[m],
-                                              round.(Psi0[:,:,m] * kappa0[m] +
+                            InverseWishart(max(kappa0[m], dm) + nz[m],
+                                              round.(Psi0[:,:,m] * max(kappa0[m], dm) +
                                                  (Matrix(dat[z[i] .== m,:]) .- xbarmap')' *
                                                       (Matrix(dat[z[i] .== m,:]) .- xbarmap') +
-                                                      (kappa0[m] * nz[m]) / (kappa0[m] + nz[m]) *
+                                                      (max(kappa0[m], dm) * nz[m]) / (max(kappa0[m], dm) + nz[m]) *
                                                       (xbarmap - mu0[m,:]) *  (xbarmap - mu0[m,:])'; digits=6)
                         )
                 )
@@ -139,8 +139,8 @@ function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
 
                 @inbounds mu = rand(
                         MvNormal(
-                            (kappa0[m] * mu0[m,:] + nz[m] * xbarmap) / (kappa0[m] + nz[m]),
-                            Sigma / (kappa0[m] + nz[m])
+                            (max(kappa0[m], dm) * mu0[m,:] + nz[m] * xbarmap) / (max(kappa0[m], dm) + nz[m]),
+                            Sigma / (max(kappa0[m], dm) + nz[m])
                         )
                 )
                 @inbounds zero_loc = labels[m] .== "1"

@@ -4,10 +4,10 @@ using LinearAlgebra
 export test_Bmn
 function test_Bmn(A::Array{Float64,2}, U::UpperTriangular{Float64,Array{Float64,2}}, m::Int64, n::Int64)
     # WLOG, m < n
-    subA = @views A[1:1:n, 1:1:n]
-    subU = @views U[1:1:n, 1:1:n]
+    subA = @views @inbounds A[1:1:n, 1:1:n]
+    subU = @views @inbounds U[1:1:n, 1:1:n]
 
-    ( subU' * subA * subA' * subU )[m, n]
+    @inbounds ( subU' * subA * subA' * subU )[m, n]
 end
 
 export rand_constrained_IW
@@ -43,17 +43,17 @@ function rand_constrained_IW(Psi0, nu, h)
     # Simulate the IW matrix, starting from the top left corner
     # and working our way down
     for i = 1:1:npairs
-        m = dimpairs[i,1]
-        n = dimpairs[i,2]
-        if Psi0[m, n] != 0
+        @inbounds m = dimpairs[i,1]
+        @inbounds n = dimpairs[i,2]
+        if @inbounds Psi0[m, n] != 0
             pass = false
             while !pass
                 samp = rand(Normal())
                 Atest = A
 
-                Atest[n, m] = samp
+                @inbounds Atest[n, m] = samp
                 testbmn = test_Bmn(Atest, U, m, n)
-                if sign(testbmn) == sign(Psi0[m,n])
+                if sign(testbmn) == @inbounds sign(Psi0[m,n])
                     pass = true
                     A = deepcopy(Atest)
                 end

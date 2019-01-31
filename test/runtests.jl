@@ -184,6 +184,7 @@ end;
 """
 These are tests for the constrained distributions
 """
+nu = 10
 Psi01 = reshape([1.2, -.8,0,-.8,1.4,0,0,0,1], (3,3))
 h1 = [1, -1, 0]
 Psi02 = reshape([1.1, -.7, -.4, 0, -.7, .9, .8, 0, -.4, .8, 1.2, 0,0,0,0,1], (4,4))

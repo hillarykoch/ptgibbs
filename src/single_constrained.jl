@@ -98,7 +98,7 @@ end
 export make_constr_beta1_gibbs_update
 function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
     nw = size(prop, 1)
-    nm = size(prop[1])[1]
+    nm = size(prop[1],1)
     kappa0, mu0, Psi0 = hyp
     n, dm = size(dat)
 

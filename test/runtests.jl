@@ -12,6 +12,9 @@ using LinearAlgebra
 using Lazy
 using Distributions
 
+"""
+These are tests for the gibbs sampler
+"""
 
 # Instantiate parameters for test model
 nw = 2; # number of walkers per temp
@@ -176,3 +179,74 @@ correct_class = sum(z_est[collect(1:1:sum(zprop.==1))] .== 1) +
         [@test x for x in proptest]
         @test correct_class >= (.9*n)
 end;
+
+
+"""
+These are tests for the constrained distributions
+"""
+Psi01 = reshape([1.2, -.8,0,-.8,1.4,0,0,0,1], (3,3))
+h1 = [1, -1, 0]
+Psi02 = reshape([1.1, -.7, -.4, 0, -.7, .9, .8, 0, -.4, .8, 1.2, 0,0,0,0,1], (4,4))
+h2 = [1, -1, -1, 0]
+
+# Simulate NIW data
+sim1 = [rand_constrained_IW(Psi01, nu, h1) for i=1:10000]
+sim2 = [rand_constrained_IW(Psi02, nu, h2) for i=1:10000]
+
+meantest1 = isapprox.([
+                mean(map(x -> x[1,1], sim1)),
+                mean(map(x -> x[2,2], sim1)),
+                mean(map(x -> x[3,3], sim1))
+                ],
+                diag(Psi01); atol = .05)
+
+rhotest1 = isapprox(mean(map(x -> x[1,2], sim1)), Psi01[1,2]; atol = .05)
+meantest2 = isapprox.(
+                [
+                mean(map(x -> x[1,1], sim2)),
+                mean(map(x -> x[2,2], sim2)),
+                mean(map(x -> x[3,3], sim2)),
+                mean(map(x -> x[4,4], sim2))
+                ],
+                diag(Psi02); atol = .05)
+rhotest2 = isapprox.(
+                [
+                mean(map(x -> x[1,2], sim2)),
+                mean(map(x -> x[1,3], sim2)),
+                mean(map(x -> x[2,3], sim2))
+                ],
+                [
+                Psi02[1,2],
+                Psi02[1,3],
+                Psi02[2,3]
+                ]; atol = .05)
+otest1 = isequal.(
+                round.([
+                mean(map(x -> x[1,3], sim1)),
+                mean(map(x -> x[2,3], sim1)),
+                mean(map(x -> x[3,3], sim1))
+                ]; digits = 6),
+                [0, 0, 1]
+)
+
+otest2 = isequal.(
+        round.([
+        mean(map(x -> x[1,4], sim2)),
+        mean(map(x -> x[2,4], sim2)),
+        mean(map(x -> x[3,4], sim2)),
+        mean(map(x -> x[4,4], sim2))
+        ]; digits = 6),
+        [0, 0, 0, 1]
+)
+
+@testset "unbiased random matrices" begin
+        [@test x for x in meantest1]
+        [@test x for x in rhotest1]
+        [@test x for x in meantest2]
+        [@test x for x in rhotest2]
+end
+
+@testset "0 and 1 constraints correctly imposed" begin
+        [@test x for x in otest1]
+        [@test x for x in otest2]
+end

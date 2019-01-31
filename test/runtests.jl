@@ -85,9 +85,9 @@ lp = ptgibbs.logprior;
 chain, _, _, _ =
         ptgibbs.run_mcmc(df1[[:x,:y]], param, hyp, alpha, ll, lp, betas, nstep, burnin);
         #run_constr_mcmc(df1[[:x,:y]], param, hyp, alpha, ll, lp, betas, nstep, burnin, labels);
-#chain, _, _ =
+chain, _, _ =
         #run_gibbs(df1[[:x,:y]], param, hyp, alpha, ll, lp, nstep, burnin);
-        #run_constr_gibbs(df1[[:x,:y]], param, hyp, alpha, ll, lp, nstep, burnin, labels);
+        run_constr_gibbs(df1[[:x,:y]], param, hyp, alpha, ll, lp, nstep, burnin, labels);
 
 # Compute some estimates and get cluster labels
 norm_chain = map(x -> x[1], chain[:,1,:]);

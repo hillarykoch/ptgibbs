@@ -40,60 +40,58 @@ function make_constr_mcmc_move(dat, param, hyp, alpha, ll, lp, betas, labels)
 
     (param, llps, lpps)
 end
-
-export run_constr_mcmc
-function run_constr_mcmc(dat::DataFrame,
-                    param::Array,
-                    hyp::Tuple,
-                    alpha::Array{Float64,1},
-                    loglike,
-                    logprior,
-                    betas::Array{Float64,1},
-                    nstep::Int64,
-                    burnin::Int64,
-                    labels::Array{String,1})
-    # Reformat labels from R to be good for this application
-    labels = hcat([split(x, "") for x in labels])
-
-    ll = loglike
-    lp = logprior
-
-    nw, nt = size(param)
-    n, nd = size(dat)
-
-    @assert size(betas,1)==nt "size(betas,1) must be equal to the number of temperatures"
-
-    @showprogress 1 "Computing for burn-in..." for i in 1:burnin
-        param, lnlikes, lnpriors = make_constr_mcmc_move(dat, param, hyp, alpha, loglike, logprior, betas, labels)
-
-        param, lnlikes, lnpriors, tswaps = make_tswap(param, lnlikes, lnpriors, betas)
-        swapfraction = tswaps / nw
-        tc = 10.0 + i/10.0
-
-        betas = tevolve(swapfraction, betas, tc)
-    end
-
-    chain = Array{
-                    Tuple{Array{Dict{String,Array{Float64,N} where N},1},
-                    Array{Float64,1},
-                    Array{Int64,1}}
-            }(undef, nw, nt, nstep)
-    chainlnlike = zeros(nw, nt, nstep)
-    chainlnprior = zeros(nw, nt, nstep)
-
-    @showprogress 1 "Computing for main Markov chain..."  for i in 1:nstep
-        param, lnlikes, lnpriors = make_constr_mcmc_move(dat, param, hyp, alpha, loglike, logprior, betas, labels)
-        param, lnlikes, lnpriors, _ = make_tswap(param, lnlikes, lnpriors, betas)
-
-        @inbounds chain[:,:,i] = deepcopy(param)
-        @inbounds chainlnlike[:,:,i] = lnlikes
-        @inbounds chainlnprior[:,:,i] = lnpriors
-    end
-
-    chain, chainlnlike, chainlnprior, betas
-end
-
-
+#
+#export run_constr_mcmc
+#function run_constr_mcmc(dat::DataFrame,
+                    #param::Array,
+                    #hyp::Tuple,
+                    #alpha::Array{Float64,1},
+                    #loglike,
+                    #logprior,
+                    #betas::Array{Float64,1},
+                    #nstep::Int64,
+                    #burnin::Int64,
+                    #labels::Array{String,1})
+    ## Reformat labels from R to be good for this application
+    #labels = hcat([split(x, "") for x in labels])
+#
+    #ll = loglike
+    #lp = logprior
+#
+    #nw, nt = size(param)
+    #n, nd = size(dat)
+#
+    #@assert size(betas,1)==nt "size(betas,1) must be equal to the number of temperatures"
+#
+    #@showprogress 1 "Computing for burn-in..." for i in 1:burnin
+        #param, lnlikes, lnpriors = make_constr_mcmc_move(dat, param, hyp, alpha, loglike, logprior, betas, labels)
+#
+        #param, lnlikes, lnpriors, tswaps = make_tswap(param, lnlikes, lnpriors, betas)
+        #swapfraction = tswaps / nw
+        #tc = 10.0 + i/10.0
+#
+        #betas = tevolve(swapfraction, betas, tc)
+    #end
+#
+    #chain = Array{
+                    #Tuple{Array{Dict{String,Array{Float64,N} where N},1},
+                    #Array{Float64,1},
+                    #Array{Int64,1}}
+            #}(undef, nw, nt, nstep)
+    #chainlnlike = zeros(nw, nt, nstep)
+    #chainlnprior = zeros(nw, nt, nstep)
+#
+    #@showprogress 1 "Computing for main Markov chain..."  for i in 1:nstep
+        #param, lnlikes, lnpriors = make_constr_mcmc_move(dat, param, hyp, alpha, loglike, logprior, betas, labels)
+        #param, lnlikes, lnpriors, _ = make_tswap(param, lnlikes, lnpriors, betas)
+#
+        #@inbounds chain[:,:,i] = deepcopy(param)
+        #@inbounds chainlnlike[:,:,i] = lnlikes
+        #@inbounds chainlnprior[:,:,i] = lnpriors
+    #end
+#
+    #chain, chainlnlike, chainlnprior, betas
+#end
 
 export make_constr_beta1_gibbs_update
 function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
@@ -119,58 +117,90 @@ function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
                 # Compute this only once because it gets reused a lot here
                 xbarmap = map(x -> x[m], xbar)
                 # Draw from the posterior (I don't have the additional ifelse that is in my R code here)
-                @inbounds Sigma = rand(
-                            InverseWishart(max(kappa0[m], dm) + nz[m],
-                                              round.(Psi0[:,:,m] * max(kappa0[m], dm) +
-                                                 (Matrix(dat[z[i] .== m,:]) .- xbarmap')' *
-                                                      (Matrix(dat[z[i] .== m,:]) .- xbarmap') +
-                                                      (max(kappa0[m], dm) * nz[m]) / (max(kappa0[m], dm) + nz[m]) *
-                                                      (xbarmap - mu0[m,:]) *  (xbarmap - mu0[m,:])'; digits=6)
-                        )
+                #@inbounds Sigma = rand(
+                            #InverseWishart(max(kappa0[m], dm) + nz[m],
+                                              #round.(Psi0[:,:,m] * max(kappa0[m], dm) +
+                                                 #(Matrix(dat[z[i] .== m,:]) .- xbarmap')' *
+                                                      #(Matrix(dat[z[i] .== m,:]) .- xbarmap') +
+                                                      #(max(kappa0[m], dm) * nz[m]) / (max(kappa0[m], dm) + nz[m]) *
+                                                      #(xbarmap - mu0[m,:]) *  (xbarmap - mu0[m,:])'; digits=6)
+                        #)
+                #)
+
+                @inbounds Sigma = rand_constrained_IW(
+                    round.(
+                    Psi0[:,:,m] * max(kappa0[m], dm) +
+                        (Matrix(dat[z[i] .== m,:]) .- xbarmap')' *
+                        (Matrix(dat[z[i] .== m,:]) .- xbarmap') +
+                        (max(kappa0[m], dm) * nz[m]) / (max(kappa0[m], dm) + nz[m]) *
+                        (xbarmap - mu0[m,:]) *  (xbarmap - mu0[m,:])'; digits=20),
+                    max(kappa0[m], dm) + nz[m],
+                    labels[m] .- 1
                 )
 
-                for d1 in 1:dm
-                    if labels[m][d1] == "1"
-                        @inbounds Sigma[d1, 1:end .!= d1] = zeros(dm-1)
-                        @inbounds Sigma[1:end .!= d1, d1] = zeros(dm-1)
-                        @inbounds Sigma[d1, d1] = 1
-                    end
-                end
+                #for d1 in 1:dm
+                    #if labels[m][d1] == 1
+                        #@inbounds Sigma[d1, 1:end .!= d1] = zeros(dm-1)
+                        #@inbounds Sigma[1:end .!= d1, d1] = zeros(dm-1)
+                        #@inbounds Sigma[d1, d1] = 1
+                    #end
+                #end
 
-                @inbounds mu = rand(
-                        MvNormal(
-                            (max(kappa0[m], dm) * mu0[m,:] + nz[m] * xbarmap) / (max(kappa0[m], dm) + nz[m]),
-                            Sigma / (max(kappa0[m], dm) + nz[m])
-                        )
+                #@inbounds mu = rand(
+                        #MvNormal(
+                            #(max(kappa0[m], dm) * mu0[m,:] + nz[m] * xbarmap) / (max(kappa0[m], dm) + nz[m]),
+                            #Sigma / (max(kappa0[m], dm) + nz[m])
+                        #)
+                #)
+
+                @inbounds mu = rand_constrained_MVN(
+                    round.(
+                    Sigma / (max(kappa0[m], dm) + nz[m]); digits = 20),
+                    (max(kappa0[m], dm) * mu0[m,:] + nz[m] * xbarmap) / (max(kappa0[m], dm) + nz[m]),
+                    labels[m] .- 1
                 )
-                @inbounds zero_loc = labels[m] .== "1"
-                @inbounds mu[zero_loc] = zeros(sum(zero_loc))
+
+                #@inbounds zero_loc = labels[m] .== 1
+                #@inbounds mu[zero_loc] = zeros(sum(zero_loc))
 
                 @inbounds NIW[i,m] = Dict("mu" => mu, "Sigma" => Sigma)
             else
                 # Draw from the prior
-                @inbounds Sigma = rand(
-                            InverseWishart(max(kappa0[m], dm),
-                                              Psi0[:,:,m] * max(kappa0[m], dm)
-                        )
+                #@inbounds Sigma = rand(
+                            #InverseWishart(max(kappa0[m], dm),
+                                              #Psi0[:,:,m] * max(kappa0[m], dm)
+                        #)
+                #)
+
+                @inbounds Sigma = rand_constrained_IW(
+                    round.(Psi0[:,:,m] * max(kappa0[m], dm); digits=20),
+                    max(kappa0[m], dm),
+                    labels[m] .- 1
                 )
 
-                for d1 in 1:dm
-                    if labels[m][d1] == "1"
-                        @inbounds Sigma[d1, 1:end .!= d1] = zeros(dm-1)
-                        @inbounds Sigma[1:end .!= d1, d1] = zeros(dm-1)
-                        @inbounds Sigma[d1, d1] = 1
-                    end
-                end
+                #for d1 in 1:dm
+                    #if labels[m][d1] == 1
+                        #@inbounds Sigma[d1, 1:end .!= d1] = zeros(dm-1)
+                        #@inbounds Sigma[1:end .!= d1, d1] = zeros(dm-1)
+                        #@inbounds Sigma[d1, d1] = 1
+                    #end
+                #end
 
-                @inbounds mu = rand(
-                        MvNormal(
-                            mu0[m,:],
-                            Sigma / max(kappa0[m], dm)
-                        )
+                #@inbounds mu = rand(
+                        #MvNormal(
+                            #mu0[m,:],
+                            #Sigma / max(kappa0[m], dm)
+                        #)
+                #)
+
+                @inbounds mu = rand_constrained_MVN(
+                    round.(Sigma / max(kappa0[m], dm); digits = 20),
+                    mu0[m,:],
+                    labels[m] .- 1
                 )
-                @inbounds zero_loc = labels[m] .== "1"
-                @inbounds mu[zero_loc] = zeros(sum(zero_loc))
+
+                #@inbounds zero_loc = labels[m] .== 1
+                #@inbounds mu[zero_loc] = zeros(sum(zero_loc))
 
                 @inbounds NIW[i,m] = Dict("mu" => mu, "Sigma" => Sigma)
             end
@@ -235,6 +265,7 @@ function run_constr_gibbs(dat::DataFrame,
 
     # Reformat labels from R to be good for this application
     labels = hcat([split(x, "") for x in labels])
+    labels = [parse.(Int64, x) for x in labels]
 
     ll = loglike
     lp = logprior

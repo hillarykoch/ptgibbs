@@ -62,3 +62,18 @@ function rand_constrained_IW(Psi0, nu, h)
     end
     (U' * A * A' * U) / nu
 end
+
+export rand_constrained_MVN
+function rand_constrained_MVN(Sigma, mu0, h)
+    dm = size(h,1)
+    A = cholesky(Sigma).L
+
+    # Simulate halfnormal noise
+    z = rand(Truncated(Normal(), 0, Inf), dm)
+
+    # Adjust the sign as appropriate
+    [h[i] == 0 ? z[i] = 0 : z[i] = abs(z[i]) * sign(h[i]) for i in 1:1:dm]
+
+    # Make the mean as appropriate
+    A * z .+ mu0
+end

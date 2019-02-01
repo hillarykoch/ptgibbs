@@ -95,7 +95,7 @@ chain, _, _, _ =
         #run_constr_gibbs(df1[[:x,:y]], param, hyp, alpha, ll, lp, nstep, burnin, labs);
 
 # Compute some estimates and get cluster labels
-norm_chain = map(x -> x[1], chain)[:,1,:]);
+norm_chain = map(x -> x[1], chain)[:,1,:];
 mu_ests = [
         [
         @> begin
@@ -163,7 +163,7 @@ prop_est = [
                 @> mean
         end];
 
-z_chain = map(x -> x[3], chain)[:,1,:]);
+z_chain = map(x -> x[3], chain)[:,1,:];
 z_est = @> begin
                 hcat(hcat(z_chain[1,:]...), hcat(z_chain[2,:]...))
                 @>> mapslices(sort; dims = 2)

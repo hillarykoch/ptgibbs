@@ -33,7 +33,7 @@ function rand_constrained_IW(Psi0, nu, h)
 
     # Sample the diagonal of A
     for i =  1:1:dm
-        @inbounds h[i] != 0 ? A[i,i] = sqrt(rand(Chisq(nu - i + 1))) : A[i,i] = nu#sqrt(nu)
+        @inbounds h[i] != 0 ? A[i,i] = sqrt(rand(Chisq(nu - i + 1))) : A[i,i] = nu
     end
 
     # Construst the pairs of dimensions of A
@@ -42,7 +42,6 @@ function rand_constrained_IW(Psi0, nu, h)
     dimpairs = Matrix{Int64}(undef, npairs, 2)
     counter = 1
     for k = 1:1:(dm-1)
-        #global counter
         for i=1:1:k
             @inbounds dimpairs[counter,:] = [i, k+1]
             counter = counter + 1

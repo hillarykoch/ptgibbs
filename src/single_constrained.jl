@@ -66,11 +66,13 @@ function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
                 xbarmap = map(x -> x[m], xbar)
 
                 rcIW_in =
-                Psi0[:,:,m] * max(kappa0[m], dm) +
+                Matrix(Hermitian(
+                    Psi0[:,:,m] * max(kappa0[m], dm) +
                     (Matrix(dat[z[i] .== m,:]) .- xbarmap')' *
                     (Matrix(dat[z[i] .== m,:]) .- xbarmap') +
                     (max(kappa0[m], dm) * nz[m]) / (max(kappa0[m], dm) + nz[m]) *
                     (xbarmap - mu0[m,:]) *  (xbarmap - mu0[m,:])'
+                ))
 
                 # Check if we are ok with Sigma
                 likelihood_check = reshape(rep(false, times = dm^2), (dm,dm))
@@ -207,7 +209,6 @@ function run_constr_gibbs(dat::DataFrame,
     n, nd = size(dat)
 
     @showprogress 1 "Computing for burn-in..." for i in 1:burnin
-        #global param
         param, lnlikes, lnpriors = make_constr_beta1_mcmc_move(dat, param, hyp, alpha, loglike, logprior, labels)
     end
 

@@ -65,9 +65,6 @@ for i in 1:nw
                         Sigma = rand(InverseWishart(nu0[m], nu0[m] * Matrix{Float64}(I,dm,dm)))
                         mu = rand(MvNormal(mu0[m,:], Sigma / nu0[m]))
 
-                        #Sigma = rand_constrained_IW(Psi0[:,:,m], nu0[m], [[0,0], [1,1], [-1,1]][m]) #./ nu0[m]
-                        #mu = rand_constrained_MVN(Sigma/nu0[m], mu0[m,:], [[0,0], [1,1], [-1,1]][m])
-
                         push!(dictionary, Dict("mu" => mu, "Sigma" => Sigma))
                 end
                 initprop = rand(Dirichlet(alpha))

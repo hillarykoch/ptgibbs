@@ -101,7 +101,7 @@ function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
                 likelihood_check2 = rep(false, times = dm)
                 rcMVN_in = (max(kappa0[m], dm) * mu0[m,:] + nz[m] * xbarmap) ./ (max(kappa0[m], dm) + nz[m])
                 for j=1:dm
-                    if sign(rcMVN_in[j]) != sign(labels[m][j]) & sign(labels[m][j] != 0)
+                    if sign(rcMVN_in[j]) != sign(labels[m][j] - 1) & sign(labels[m][j] - 1) != 0
                         likelihood_check2[j] = true
                     end
                 end
@@ -200,8 +200,7 @@ function run_constr_gibbs(dat::DataFrame,
                     labels::Array{String,1})
 
     # Reformat labels from R to be good for this application
-    labels = hcat([split(x, "") for x in labels])
-    labels = [parse.(Int64, x) for x in labels]
+    labels = hcat([parse.(Int64, split(x, "")) for x in labels])
 
     ll = loglike
     lp = logprior

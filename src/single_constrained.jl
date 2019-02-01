@@ -66,13 +66,14 @@ function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
                 xbarmap = map(x -> x[m], xbar)
 
                 rcIW_in =
+                round.(
                 Matrix(Hermitian(
                     Psi0[:,:,m] * max(kappa0[m], dm) +
                     (Matrix(dat[z[i] .== m,:]) .- xbarmap')' *
                     (Matrix(dat[z[i] .== m,:]) .- xbarmap') +
                     (max(kappa0[m], dm) * nz[m]) / (max(kappa0[m], dm) + nz[m]) *
                     (xbarmap - mu0[m,:]) *  (xbarmap - mu0[m,:])'
-                ))
+                )); digits = 8)
 
                 # Check if we are ok with Sigma
                 likelihood_check = reshape(rep(false, times = dm^2), (dm,dm))
@@ -88,9 +89,9 @@ function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
                 if any(likelihood_check)
                     # Sample from the prior for Sigma
                     @inbounds Sigma = rand_constrained_IW(
-                        #round.(
+                        round.(
                         Matrix(Hermitian(
-                        Psi0[:,:,m] * max(kappa0[m], dm))),#; digits=8),
+                        Psi0[:,:,m] * max(kappa0[m], dm))),; digits=8),
                         max(kappa0[m], dm),
                         labels[m] .- 1
                     )
@@ -113,16 +114,17 @@ function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
                 if any(likelihood_check2)
                     # Sample from the prior for mu
                     @inbounds mu = rand_constrained_MVN(
-                        #round.(
+                        round.(
                         Matrix(Hermitian(
-                        Sigma ./ max(kappa0[m], dm))),#; digits = 8),
+                        Sigma ./ max(kappa0[m], dm))); digits = 8),
                         mu0[m,:],
                         labels[m] .- 1
                     )
                 else
                     @inbounds mu = rand_constrained_MVN(
+                        round.(
                         Matrix(Hermitian(
-                        Sigma ./ (max(kappa0[m], dm) + nz[m]))),
+                        Sigma ./ (max(kappa0[m], dm) + nz[m]))); digits = 8),
                         rcMVN_in,
                         labels[m] .- 1
                         )
@@ -132,15 +134,15 @@ function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
             else
                 # Draw from the prior
                 @inbounds Sigma = rand_constrained_IW(
-                    #round.(
-                    Matrix(Hermitian(Psi0[:,:,m] * max(kappa0[m], dm))),#; digits=8),
+                    round.(
+                    Matrix(Hermitian(Psi0[:,:,m] * max(kappa0[m], dm))); digits=8),
                     max(kappa0[m], dm),
                     labels[m] .- 1
                 )
 
                 @inbounds mu = rand_constrained_MVN(
-                    #round.(
-                    Matrix(Hermitian(Sigma ./ max(kappa0[m], dm))),#; digits = 8),
+                    round.(
+                    Matrix(Hermitian(Sigma ./ max(kappa0[m], dm))); digits = 8),
                     mu0[m,:],
                     labels[m] .- 1
                 )

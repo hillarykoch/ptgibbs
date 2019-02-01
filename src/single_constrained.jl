@@ -113,7 +113,8 @@ function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
 
                 if any(likelihood_check2)
                     # Sample from the prior for mu
-                    @inbounds mu = rand_constrained_MVN(
+                    @inbounds mu =
+                    rand_constrained_MVN(
                         round.(
                         Matrix(Hermitian(
                         Sigma ./ max(kappa0[m], dm))); digits = 8),
@@ -121,13 +122,24 @@ function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
                         labels[m] .- 1
                     )
                 else
-                    @inbounds mu = rand_constrained_MVN(
-                        round.(
-                        Matrix(Hermitian(
-                        Sigma ./ (max(kappa0[m], dm) + nz[m]))); digits = 8),
-                        rcMVN_in,
-                        labels[m] .- 1
-                        )
+                    @inbounds mu = try
+                        rand_constrained_MVN(
+                            round.(
+                            Matrix(Hermitian(
+                            Sigma ./ (max(kappa0[m], dm) + nz[m]))); digits = 8),
+                            rcMVN_in,
+                            labels[m] .- 1
+                            )
+                        catch
+                            println(round.(Matrix(Hermitian(Sigma ./ max(kappa0[m], dm))); digits = 8))
+                            rand_constrained_MVN(
+                                round.(
+                                Matrix(Hermitian(
+                                Sigma ./ max(kappa0[m], dm))); digits = 8),
+                                mu0[m,:],
+                                labels[m] .- 1
+                            )
+                        end
                 end
 
                 @inbounds NIW[i,m] = Dict("mu" => mu, "Sigma" => Sigma)

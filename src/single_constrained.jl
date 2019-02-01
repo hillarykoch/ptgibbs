@@ -88,7 +88,9 @@ function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
                 if any(likelihood_check)
                     # Sample from the prior for Sigma
                     @inbounds Sigma = rand_constrained_IW(
-                        round.(Psi0[:,:,m] * max(kappa0[m], dm); digits=8),
+                        #round.(
+                        Matrix(Hermitian(
+                        Psi0[:,:,m] * max(kappa0[m], dm))),#; digits=8),
                         max(kappa0[m], dm),
                         labels[m] .- 1
                     )
@@ -111,13 +113,16 @@ function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
                 if any(likelihood_check2)
                     # Sample from the prior for mu
                     @inbounds mu = rand_constrained_MVN(
-                        round.(Sigma ./ max(kappa0[m], dm); digits = 8),
+                        #round.(
+                        Matrix(Hermitian(
+                        Sigma ./ max(kappa0[m], dm))),#; digits = 8),
                         mu0[m,:],
                         labels[m] .- 1
                     )
                 else
                     @inbounds mu = rand_constrained_MVN(
-                        Sigma ./ (max(kappa0[m], dm) + nz[m]),
+                        Matrix(Hermitian(
+                        Sigma ./ (max(kappa0[m], dm) + nz[m]))),
                         rcMVN_in,
                         labels[m] .- 1
                         )
@@ -127,13 +132,15 @@ function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
             else
                 # Draw from the prior
                 @inbounds Sigma = rand_constrained_IW(
-                    round.(Psi0[:,:,m] * max(kappa0[m], dm); digits=8),
+                    #round.(
+                    Matrix(Hermitian(Psi0[:,:,m] * max(kappa0[m], dm))),#; digits=8),
                     max(kappa0[m], dm),
                     labels[m] .- 1
                 )
 
                 @inbounds mu = rand_constrained_MVN(
-                    round.(Sigma ./ max(kappa0[m], dm); digits = 8),
+                    #round.(
+                    Matrix(Hermitian(Sigma ./ max(kappa0[m], dm))),#; digits = 8),
                     mu0[m,:],
                     labels[m] .- 1
                 )

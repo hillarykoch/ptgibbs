@@ -176,7 +176,7 @@ function loglike(param::Tuple{Array{Dict{String,Array{Float64,N} where N},1},Arr
             ll_normal[m] =
                 sum(
                     logpdf(
-                            MvNormal(get(NIW[m], "mu", 0), get(NIW[m], "Sigma", 0)),
+                            MvNormal(get(NIW[m], "mu", 0), Matrix(Hermitian(get(NIW[m], "Sigma", 0)))),
                             Matrix(dat[z .== m,:])'
                     )
                 )
@@ -186,7 +186,7 @@ function loglike(param::Tuple{Array{Dict{String,Array{Float64,N} where N},1},Arr
     end
 
     # Compute the log-likelihood of the class labels given the NIW param and mixing proportions
-    distns = map(x -> MvNormal(get(x, "mu", 0), get(x, "Sigma", 0)), NIW)
+    distns = map(x -> MvNormal(get(x, "mu", 0), Matrix(Hermitian(get(x, "Sigma", 0)))), NIW)
     p = Array{Float64,2}(undef,n,nm)
     for m in 1:nm
         p[:,m] = pdf(distns[m], Matrix(dat)') * prop[m]

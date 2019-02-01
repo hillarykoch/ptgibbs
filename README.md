@@ -27,7 +27,6 @@ Computing for main Markov chain...100%|█████████████�
 
 Test Summary:                  | Pass  Total
 reasonable parameter estimates |   10     10
-Testing ptgibbs tests passed
 Test Summary:            | Pass  Total
 unbiased random matrices |   11     11
 Test Summary:                         | Pass  Total

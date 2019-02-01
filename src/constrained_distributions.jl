@@ -20,12 +20,20 @@ function rand_constrained_IW(Psi0, nu, h)
     """
 
     dm = size(Psi0, 1)
-    U = cholesky(Psi0).U
+
+    # On real data, force 0s and 1s where necessary
+    # It's like we don't even sample this which is ok I think
+    zeroidx = findall(h .== 0)
+    [Psi0[zz, :] = zeros(dm) for zz in zeroidx]
+    [Psi0[:, zz] = zeros(dm) for zz in zeroidx]
+    [Psi0[zz,zz] = 1 for zz in zeroidx]
+
+    U = cholesky(Hermitian(Psi0)).U
     A = zeros((dm, dm))
 
     # Sample the diagonal of A
     for i =  1:1:dm
-        @inbounds h[i] != 0 ? A[i,i] = sqrt(rand(Chisq(nu - i + 1))) : A[i,i] = sqrt(nu)
+        @inbounds h[i] != 0 ? A[i,i] = sqrt(rand(Chisq(nu - i + 1))) : A[i,i] = nu#sqrt(nu)
     end
 
     # Construst the pairs of dimensions of A
@@ -34,6 +42,7 @@ function rand_constrained_IW(Psi0, nu, h)
     dimpairs = Matrix{Int64}(undef, npairs, 2)
     counter = 1
     for k = 1:1:(dm-1)
+        #global counter
         for i=1:1:k
             @inbounds dimpairs[counter,:] = [i, k+1]
             counter = counter + 1
@@ -45,7 +54,7 @@ function rand_constrained_IW(Psi0, nu, h)
     for i = 1:1:npairs
         @inbounds m = dimpairs[i,1]
         @inbounds n = dimpairs[i,2]
-        if @inbounds Psi0[m, n] != 0
+        if @inbounds h[m] * h[n] != 0
             pass = false
             while !pass
                 samp = rand(Normal())
@@ -53,27 +62,39 @@ function rand_constrained_IW(Psi0, nu, h)
 
                 @inbounds Atest[n, m] = samp
                 testbmn = test_Bmn(Atest, U, m, n)
-                if sign(testbmn) == @inbounds sign(Psi0[m,n])
+                if sign(testbmn) == @inbounds sign(h[m] *h[n])
                     pass = true
                     A = deepcopy(Atest)
                 end
             end
         end
     end
-    (U' * A * A' * U) / nu
+    (U' * A * A' * U) ./ (nu^2)
 end
 
 export rand_constrained_MVN
 function rand_constrained_MVN(Sigma, mu0, h)
     dm = size(h,1)
-    A = cholesky(Sigma).L
+
+    A = cholesky(Hermitian(Sigma)).L
+    zeroidx = findall(h .== 0)
+    [A[zz, :] = zeros(dm) for zz in zeroidx]
+    [A[:, zz] = zeros(dm) for zz in zeroidx]
+    [A[zz,zz] = 1 for zz in zeroidx]
+
 
     # Simulate halfnormal noise
     z = rand(Truncated(Normal(), 0, Inf), dm)
 
     # Adjust the sign as appropriate
-    [h[i] == 0 ? z[i] = 0 : z[i] = abs(z[i]) * sign(h[i]) for i in 1:1:dm]
+    for i in 1:dm
+        if h[i] == 0
+            z[i] = 0
+            mu0[i] = 0
+        else
+            z[i] = abs(z[i]) * sign(h[i])
+        end
+    end
 
-    # Make the mean as appropriate
     A * z .+ mu0
 end

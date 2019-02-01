@@ -65,12 +65,12 @@ function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
                 # Compute this only once because it gets reused a lot here
                 xbarmap = map(x -> x[m], xbar)
 
-                rcIW_in = #round.(
+                rcIW_in =
                 Psi0[:,:,m] * max(kappa0[m], dm) +
                     (Matrix(dat[z[i] .== m,:]) .- xbarmap')' *
                     (Matrix(dat[z[i] .== m,:]) .- xbarmap') +
                     (max(kappa0[m], dm) * nz[m]) / (max(kappa0[m], dm) + nz[m]) *
-                    (xbarmap - mu0[m,:]) *  (xbarmap - mu0[m,:])'#; digits=8)
+                    (xbarmap - mu0[m,:]) *  (xbarmap - mu0[m,:])'
 
                 # Check if we are ok with Sigma
                 likelihood_check = reshape(rep(false, times = dm^2), (dm,dm))
@@ -89,12 +89,12 @@ function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
                         round.(Psi0[:,:,m] * max(kappa0[m], dm); digits=8),
                         max(kappa0[m], dm),
                         labels[m] .- 1
-                    )# ./ (max(kappa0[m], dm))
+                    )
                 else
                     @inbounds Sigma = rand_constrained_IW(
                         rcIW_in,
                         max(kappa0[m], dm) + nz[m],
-                        labels[m] .- 1)  #./ (max(kappa0[m], dm) + nz[m])
+                        labels[m] .- 1)
                 end
 
                 # Check if we are ok for mu
@@ -115,8 +115,7 @@ function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
                     )
                 else
                     @inbounds mu = rand_constrained_MVN(
-                        #round.(
-                        Sigma ./ (max(kappa0[m], dm) + nz[m]), #; digits = 8),
+                        Sigma ./ (max(kappa0[m], dm) + nz[m]),
                         rcMVN_in,
                         labels[m] .- 1
                         )
@@ -129,14 +128,13 @@ function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
                     round.(Psi0[:,:,m] * max(kappa0[m], dm); digits=8),
                     max(kappa0[m], dm),
                     labels[m] .- 1
-                ) #./ (max(kappa0[m], dm))
+                )
 
                 @inbounds mu = rand_constrained_MVN(
                     round.(Sigma ./ max(kappa0[m], dm); digits = 8),
                     mu0[m,:],
                     labels[m] .- 1
                 )
-
 
                 @inbounds NIW[i,m] = Dict("mu" => mu, "Sigma" => Sigma)
             end

@@ -42,104 +42,95 @@ function make_constr_gibbs_update(dat, hyp, z, prop, alpha, labels)
     kappa0, mu0, Psi0 = hyp
     n, dm = size(dat)
 
-    NIW = Array{Dict{String,Array{Float64,N} where N}}(undef,nw,nt,nm)
+    NIW = Array{Dict{String,Array{Float64,N} where N}}(undef,nw,nm)
     for i in 1:nw
-        for j in 1:nt
-            """
-            Count the number of observations in each class
-                for the current walker, current temperature
-            """
-            rles = @> begin
-                    @inbounds z[i,j]
-                    @>sort()
-                    @>rle()
-                end
-            nz = zeros(nm)
-            @inbounds nz[rles[1]] = rles[2]
+        rles = @> begin
+                @inbounds z[i]
+                @>sort()
+                @>rle()
+            end
+        nz = zeros(nm)
+        @inbounds nz[rles[1]] = rles[2]
 
-            """
-            Compute the d-dimensional sample mean for each class
-                for the current walker, current temperature
-            """
-            # xbar is an array of d dictionaries
-            xbar = @views colwise(x -> tapply_mean(z[i,j], x), dat)
+        # xbar is an array of d dictionaries
+        xbar = @views colwise(x -> tapply_mean(z[i], x), dat)
+        for m in 1:nm
+            if nz[m] >= dm
+                # Compute this only once because it gets reused a lot here
+                xbarmap = map(x -> x[m], xbar)
 
-            """
-            Draw NIW random variables
-            If there are enough (dm) observations in the class, sample from the posterior
-                Otherwise, just draw from the prior
-            Store the NIW in an array of dictionaries
-            """
-            for m in 1:nm
-                if nz[m] >= dm
-                    # Compute this only once because it gets reused a lot here
-                    xbarmap = map(x -> x[m], xbar)
+                rcIW_in =
+                Psi0[:,:,m] * max(kappa0[m], dm) +
+                    (Matrix(dat[z[i] .== m,:]) .- xbarmap')' *
+                    (Matrix(dat[z[i] .== m,:]) .- xbarmap') +
+                    (max(kappa0[m], dm) * nz[m]) / (max(kappa0[m], dm) + nz[m]) *
+                    (xbarmap - mu0[m,:]) *  (xbarmap - mu0[m,:])'
 
-                    # Draw from the posterior (I don't have the additional ifelse that is in my R code here)
-                    @inbounds Sigma = rand(
-                                InverseWishart(max(kappa0[m], dm) + nz[m],
-                                               round.(Psi0[:,:,m] * max(kappa0[m], dm) +
-                                                  (Matrix(dat[z[i,j] .== m,:]) .- xbarmap')' *
-                                                       (Matrix(dat[z[i,j] .== m,:]) .- xbarmap') +
-                                                       (max(kappa0[m], dm) * nz[m]) / (max(kappa0[m], dm) + nz[m]) *
-                                                       (xbarmap - mu0[m,:]) *  (xbarmap - mu0[m,:])'; digits=6)
-                            )
-                    )
-
-                    # Possibly turn this ifelse statement into a separate function,
-                    # fix_rhos, to improve performance
-                    # Consider also, instead of post-hoc setting to zero, only drawing relevant dimensions
-                    # and then updating those alone
-                    for d1 in 1:dm
-                        if labels[m][d1] == "1"
-                            @inbounds Sigma[d1, 1:end .!= d1] = zeros(dm-1)
-                            @inbounds Sigma[1:end .!= d1, d1] = zeros(dm-1)
-                            @inbounds Sigma[d1, d1] = 1
+                # Check if we are ok with Sigma
+                likelihood_check = reshape(rep(false, times = dm^2), (dm,dm))
+                for j = 1:(dm-1)
+                    for k = (j+1):dm
+                        if sign(rcIW_in[j,k]) != sign((labels[m][j] - 1) * (labels[m][k] - 1)) &
+                                sign((labels[m][j] - 1) * (labels[m][k] - 1)) != 0
+                            likelihood_check[j,k] = true
                         end
                     end
+                end
 
-                    @inbounds mu = rand(
-                            MvNormal(
-                                (max(kappa0[m], dm) * mu0[m,:] + nz[m] * xbarmap) / (max(kappa0[m], dm) + nz[m]),
-                                Sigma / (max(kappa0[m], dm) + nz[m])
-                            )
+                if any(likelihood_check)
+                    # Sample from the prior for Sigma
+                    @inbounds Sigma = rand_constrained_IW(
+                        round.(Psi0[:,:,m] * max(kappa0[m], dm); digits=8),
+                        max(kappa0[m], dm),
+                        labels[m] .- 1
                     )
-
-                    # Possibly turn this ifelse statement into a separate function,
-                    # fix_mus, to improve performance
-                    @inbounds zero_loc = labels[m] .== "1"
-                    @inbounds mu[zero_loc] = zeros(sum(zero_loc))
-
-
-                    @inbounds NIW[i,j,m] = Dict("mu" => mu, "Sigma" => Sigma)
                 else
-                    # Draw from the prior
-                    @inbounds Sigma = rand(
-                                InverseWishart(max(kappa0[m], dm),
-                                               Psi0[:,:,m] * max(kappa0[m], dm)
-                            )
-                    )
-
-                    for d1 in 1:dm
-                        if labels[m][d1] == "1"
-                            @inbounds Sigma[d1, 1:end .!= d1] = zeros(dm-1)
-                            @inbounds Sigma[1:end .!= d1, d1] = zeros(dm-1)
-                            @inbounds Sigma[d1, d1] = 1
-                        end
-                    end
-
-                    @inbounds mu = rand(
-                            MvNormal(
-                                mu0[m,:],
-                                Sigma / max(kappa0[m], dm)
-                            )
-                    )
-
-                    @inbounds zero_loc = labels[m] .== "1"
-                    @inbounds mu[zero_loc] = zeros(sum(zero_loc))
-
-                    @inbounds NIW[i,j,m] = Dict("mu" => mu, "Sigma" => Sigma)
+                    @inbounds Sigma = rand_constrained_IW(
+                        rcIW_in,
+                        max(kappa0[m], dm) + nz[m],
+                        labels[m] .- 1)
                 end
+
+                # Check if we are ok for mu
+                likelihood_check2 = rep(false, times = dm)
+                rcMVN_in = (max(kappa0[m], dm) * mu0[m,:] + nz[m] * xbarmap) ./ (max(kappa0[m], dm) + nz[m])
+                for j=1:dm
+                    if sign(rcMVN_in[j]) != sign(labels[m][j] - 1) & sign(labels[m][j] - 1) != 0
+                        likelihood_check2[j] = true
+                    end
+                end
+
+                if any(likelihood_check2)
+                    # Sample from the prior for mu
+                    @inbounds mu = rand_constrained_MVN(
+                        round.(Sigma ./ max(kappa0[m], dm); digits = 8),
+                        mu0[m,:],
+                        labels[m] .- 1
+                    )
+                else
+                    @inbounds mu = rand_constrained_MVN(
+                        Sigma ./ (max(kappa0[m], dm) + nz[m]),
+                        rcMVN_in,
+                        labels[m] .- 1
+                        )
+                end
+
+                @inbounds NIW[i,j,m] = Dict("mu" => mu, "Sigma" => Sigma)
+            else
+                # Draw from the prior
+                @inbounds Sigma = rand_constrained_IW(
+                    round.(Psi0[:,:,m] * max(kappa0[m], dm); digits=8),
+                    max(kappa0[m], dm),
+                    labels[m] .- 1
+                )
+
+                @inbounds mu = rand_constrained_MVN(
+                    round.(Sigma ./ max(kappa0[m], dm); digits = 8),
+                    mu0[m,:],
+                    labels[m] .- 1
+                )
+
+                @inbounds NIW[i,j,m] = Dict("mu" => mu, "Sigma" => Sigma)
             end
         end
     end
@@ -228,7 +219,7 @@ function run_constr_mcmc(dat::DataFrame,
                     burnin::Int64,
                     labels::Array{String,1})
     # Reformat labels from R to be good for this application
-    labels = hcat([split(x, "") for x in labels])
+    labels = hcat([parse.(Int64, split(x, "")) for x in labels])
 
     ll = loglike
     lp = logprior

@@ -19,30 +19,38 @@ function rand_constrained_IW(Psi0, nu, h)
     A is some random matrix where we impose restrictions to meet our needs
     """
 
-    dm = size(Psi0, 1)
-
     # On real data, force 0s and 1s where necessary
     # It's like we don't even sample this which is ok I think
     zeroidx = findall(h .== 0)
-    [Psi0[zz, :] = zeros(dm) for zz in zeroidx]
-    [Psi0[:, zz] = zeros(dm) for zz in zeroidx]
-    [Psi0[zz,zz] = 1 for zz in zeroidx]
 
-    U = cholesky(Hermitian(Psi0)).U
-    A = zeros((dm, dm))
+    subh = h[1:end .!= zeroidx]
+    subPsi0 = @inbounds Psi0[1:end .!= zeroidx, 1:end .!= zeroidx]
+
+    dm = size(Psi0, 1)
+    subdm = size(subPsi0, 1)
+
+    #[Psi0[zz, :] = zeros(dm) for zz in zeroidx]
+    #[Psi0[:, zz] = zeros(dm) for zz in zeroidx]
+    #[Psi0[zz,zz] = 1 for zz in zeroidx]
+
+    #U = cholesky(Hermitian(Psi0)).U
+    U = cholesky(Hermitian(subPsi0)).U
+    A = zeros((subdm, subdm))
 
     # Sample the diagonal of A
-    for i =  1:1:dm
-        @inbounds h[i] != 0 ? A[i,i] = sqrt(rand(Chisq(nu - i + 1))) : A[i,i] = nu
+    for i =  1:1:subdm
+        #@inbounds h[i] != 0 ? A[i,i] = sqrt(rand(Chisq(nu - i + 1))) : A[i,i] = nu
+        @inbounds subh[i] != 0 ? A[i,i] = sqrt(rand(Chisq(nu - i + 1))) : A[i,i] = nu
     end
 
     # Construst the pairs of dimensions of A
     # in the order in which we need to simulate them
-    npairs = binomial(dm,2)
+    npairs = binomial(subdm,2)
     dimpairs = Matrix{Int64}(undef, npairs, 2)
     counter = 1
-    for k = 1:1:(dm-1)
+    for k = 1:1:(subdm-1)
         for i=1:1:k
+            #global counter
             @inbounds dimpairs[counter,:] = [i, k+1]
             counter = counter + 1
         end
@@ -54,6 +62,7 @@ function rand_constrained_IW(Psi0, nu, h)
         @inbounds m = dimpairs[i,1]
         @inbounds n = dimpairs[i,2]
         if @inbounds h[m] * h[n] != 0
+            #global A
             pass = false
             while !pass
                 samp = rand(Normal())
@@ -68,7 +77,12 @@ function rand_constrained_IW(Psi0, nu, h)
             end
         end
     end
-    (U' * A * A' * U) ./ (nu^2)
+
+    matmult = (U' * A * A' * U) ./ (nu)
+    out = Matrix{Float64}(I, dm, dm)
+    out[1:end .!= zeroidx, 1:end .!= zeroidx] = matmult
+
+    out
 end
 
 export rand_constrained_MVN

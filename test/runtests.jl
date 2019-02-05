@@ -197,26 +197,26 @@ sim1 = [rand_constrained_IW(Psi01, nu, h1) for i=1:10000]
 sim2 = [rand_constrained_IW(Psi02, nu, h2) for i=1:10000]
 
 meantest1 = isapprox.([
-                mean(map(x -> x[1,1], sim1) * nu),
-                mean(map(x -> x[2,2], sim1) * nu),
+                mean(map(x -> x[1,1], sim1)),
+                mean(map(x -> x[2,2], sim1)),
                 mean(map(x -> x[3,3], sim1))
                 ],
                 diag(Psi01); atol = .05)
 
-rhotest1 = isapprox(mean(map(x -> x[1,2], sim1)) * nu, Psi01[1,2]; atol = .05)
+rhotest1 = isapprox(mean(map(x -> x[1,2], sim1)), Psi01[1,2]; atol = .05)
 meantest2 = isapprox.(
                 [
-                mean(map(x -> x[1,1], sim2)) * nu,
-                mean(map(x -> x[2,2], sim2)) * nu,
-                mean(map(x -> x[3,3], sim2)) * nu,
+                mean(map(x -> x[1,1], sim2)),
+                mean(map(x -> x[2,2], sim2)),
+                mean(map(x -> x[3,3], sim2)),
                 mean(map(x -> x[4,4], sim2))
                 ],
                 diag(Psi02); atol = .05)
 rhotest2 = isapprox.(
                 [
-                mean(map(x -> x[1,2], sim2)) * nu,
-                mean(map(x -> x[1,3], sim2)) * nu,
-                mean(map(x -> x[2,3], sim2)) * nu
+                mean(map(x -> x[1,2], sim2)),
+                mean(map(x -> x[1,3], sim2)),
+                mean(map(x -> x[2,3], sim2))
                 ],
                 [
                 Psi02[1,2],

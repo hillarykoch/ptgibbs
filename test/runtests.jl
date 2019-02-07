@@ -62,8 +62,10 @@ for i in 1:nw
         for j in 1:nt
                 dictionary = Dict{String,Array{Float64,N} where N}[]
                 for m in 1:nm
-                        Sigma = rand(InverseWishart(nu0[m], nu0[m] * Matrix{Float64}(I,dm,dm)))
-                        mu = rand(MvNormal(mu0[m,:], Sigma / nu0[m]))
+                        #Sigma = rand(InverseWishart(nu0[m], nu0[m] * Matrix{Float64}(I,dm,dm)))
+                        #mu = rand(MvNormal(mu0[m,:], Sigma / nu0[m]))
+                        Sigma = rand_constrained_IW(Psi0[:,:,m], nu0[m], labs[m]) / nu0[m]
+                        mu = rand_constrained_MVN(Sigma, mu0[m,:], labs[m])
 
                         push!(dictionary, Dict("mu" => mu, "Sigma" => Sigma))
                 end
@@ -89,10 +91,11 @@ chain, _, _, _ =
         #run_constr_mcmc(df1[[:x,:y]], param, hyp, alpha, ll, lp, betas, nstep, burnin, labs);
 #chain, _, _ =
         #run_gibbs(df1[[:x,:y]], param, hyp, alpha, ll, lp, nstep, burnin);
-        #run_constr_gibbs(df1[[:x,:y]], param, hyp, alpha, ll, lp, nstep, burnin, labs);
+#        run_constr_gibbs(df1[[:x,:y]], param, hyp, alpha, ll, lp, nstep, burnin, labs);
 
 # Compute some estimates and get cluster labels
 norm_chain = map(x -> x[1], chain)[:,1,:];
+#norm_chain = map(x -> x[1], chain);
 mu_ests = [
         [
         @> begin
@@ -186,7 +189,7 @@ end;
 """
 These are tests for the constrained distributions
 """
-nu = 10
+nu = 15
 Psi01 = reshape([1.2,-.8,0,-.8,1.4,0,0,0,1], (3,3))
 h1 = [1,-1,0]
 Psi02 = reshape([1.1,-.7,-.4,0,-.7,.9,.8,0,-.4,.8,1.2,0,0,0,0,1], (4,4))
@@ -201,9 +204,9 @@ meantest1 = isapprox.([
                 mean(map(x -> x[2,2], sim1)),
                 mean(map(x -> x[3,3], sim1))
                 ],
-                diag(Psi01); atol = .05)
+                diag(Psi01) .* nu; atol = nu*.05)
 
-rhotest1 = isapprox(mean(map(x -> x[1,2], sim1)), Psi01[1,2]; atol = .05)
+rhotest1 = isapprox(mean(map(x -> x[1,2], sim1)), Psi01[1,2] * nu; atol = nu*.05)
 meantest2 = isapprox.(
                 [
                 mean(map(x -> x[1,1], sim2)),
@@ -211,7 +214,7 @@ meantest2 = isapprox.(
                 mean(map(x -> x[3,3], sim2)),
                 mean(map(x -> x[4,4], sim2))
                 ],
-                diag(Psi02); atol = .05)
+                diag(Psi02) .* nu; atol = nu*.05)
 rhotest2 = isapprox.(
                 [
                 mean(map(x -> x[1,2], sim2)),
@@ -222,14 +225,14 @@ rhotest2 = isapprox.(
                 Psi02[1,2],
                 Psi02[1,3],
                 Psi02[2,3]
-                ]; atol = .05)
+                ] .* nu; atol = nu * .05)
 otest1 = isequal.(
                 round.([
                 mean(map(x -> x[1,3], sim1)),
                 mean(map(x -> x[2,3], sim1)),
                 mean(map(x -> x[3,3], sim1))
                 ]; digits = 6),
-                [0, 0, 1]
+                [0, 0, 1] .* nu
 )
 
 otest2 = isequal.(
@@ -239,7 +242,7 @@ otest2 = isequal.(
         mean(map(x -> x[3,4], sim2)),
         mean(map(x -> x[4,4], sim2))
         ]; digits = 6),
-        [0, 0, 0, 1]
+        [0, 0, 0, 1]  .* nu
 )
 
 @testset "unbiased random matrices" begin

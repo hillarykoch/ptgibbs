@@ -22,23 +22,26 @@ function rand_constrained_IW(Psi0, nu, h)
     # On real data, force 0s and 1s where necessary
     # It's like we don't even sample this which is ok I think
     zeroidx = findall(h .== 0)
+    dm = size(Psi0, 1)
 
-    if size(zeroidx,1) == 0
+    if size(zeroidx,1) == dm
+        return Matrix{Float64}(I, dm, dm) * nu
+    elseif size(zeroidx,1) == 0
         subh = h
         subPsi0 = Psi0
     else
         subh = h[1:end .!= zeroidx]
         subPsi0 = @inbounds Psi0[1:end .!= zeroidx, 1:end .!= zeroidx]
     end
-    dm = size(Psi0, 1)
+
     subdm = size(subPsi0, 1)
 
     U = cholesky(Hermitian(subPsi0)).U
     A = zeros((subdm, subdm))
 
     # Sample the diagonal of A
-    for i =  1:1:subdm
-        @inbounds subh[i] != 0 ? A[i,i] = sqrt(rand(Chisq(nu - i + 1))) : A[i,i] = nu
+    for i in 1:subdm
+        A[i,i] = sqrt(rand(Chisq(nu - i + 1)))
     end
 
     # Construst the pairs of dimensions of A
@@ -77,14 +80,16 @@ function rand_constrained_IW(Psi0, nu, h)
     end
 
     if size(zeroidx,1) == 0
-        return (U' * A * A' * U) ./ (nu)
+        return inv(U' * A * A' * U)
     else
-        matmult = (U' * A * A' * U) ./ (nu)
+        matmult = (U' * A * A' * U)
         out = Matrix{Float64}(I, dm, dm)
         out[1:end .!= zeroidx, 1:end .!= zeroidx] = matmult
-        return out
+        out[1:end .== zeroidx, 1:end .== zeroidx] = [nu]
+        return inv(out)
     end
 end
+
 
 export rand_constrained_MVN
 function rand_constrained_MVN(Sigma, mu0, h)

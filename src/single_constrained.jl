@@ -9,38 +9,6 @@ using LinearAlgebra
 using Lazy
 using ProgressMeter
 
-
-export make_constr_mcmc_move
-function make_constr_mcmc_move(dat, param, hyp, alpha, ll, lp, betas, labels)
-    nw, nt = size(param)
-    NIW = map(x -> x[1], param)
-    prop = map(x -> x[2], param)
-    z = map(x -> x[3], param)
-
-    """
-    NB: the particular constraints imposed on mu, Sigma allow these constrained
-        updates to remain Gibbs, thanks to the uncorrelatedness in the covariance matrix
-        of constrained values
-    Consider the conditional distribution of a MVN proposal for mu
-        (e.g., here: https://www.wikiwand.com/en/Multivariate_normal_distribution#/Conditional_distributions)
-        and the partitioning of an Inverse Wishart proposal for Sigma
-            (e.g., here: https://projecteuclid.org/euclid.lnms/1196285114)
-    """
-    z, NIW, prop = make_constr_gibbs_update(dat, hyp, z, prop, alpha, labels)
-
-    for i in 1:nw
-        for j in 1:nt
-            map!(x -> x, param[i,j][1], NIW[i,j,:])
-            map!(x -> x, param[i,j][2], prop[i,j])
-            map!(x -> x, param[i,j][3], z[i,j])
-        end
-    end
-
-    llps, lpps = lnlikes_lnpriors(dat, param, alpha, ll, lp)
-
-    (param, llps, lpps)
-end
-
 export make_constr_beta1_gibbs_update
 function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
     nw = size(prop, 1)
@@ -91,15 +59,15 @@ function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
                     @inbounds Sigma = rand_constrained_IW(
                         round.(
                         Matrix(Hermitian(
-                        Psi0[:,:,m] * max(kappa0[m], dm))),; digits=8),
+                        Psi0[:,:,m])),; digits=8),
                         max(kappa0[m], dm),
                         labels[m] .- 1
-                    )
+                    ) ./ max(kappa0[m], dm)
                 else
                     @inbounds Sigma = rand_constrained_IW(
                         rcIW_in,
                         max(kappa0[m], dm) + nz[m],
-                        labels[m] .- 1)
+                        labels[m] .- 1) ./ (max(kappa0[m], dm) + nz[m])
                 end
 
                 # Check if we are ok for mu
@@ -117,44 +85,32 @@ function make_constr_beta1_gibbs_update(dat, hyp, z, prop, alpha, labels)
                     rand_constrained_MVN(
                         round.(
                         Matrix(Hermitian(
-                        Sigma ./ max(kappa0[m], dm))); digits = 8),
+                        Sigma)); digits = 8),
                         mu0[m,:],
                         labels[m] .- 1
                     )
                 else
-                    @inbounds mu = try
+                    @inbounds mu =
                         rand_constrained_MVN(
                             round.(
                             Matrix(Hermitian(
-                            Sigma ./ (max(kappa0[m], dm) + nz[m]))); digits = 8),
+                            Sigma)); digits = 8),
                             rcMVN_in,
                             labels[m] .- 1
                             )
-                        catch
-                            println(round.(Matrix(Hermitian(Sigma ./ max(kappa0[m], dm))); digits = 8))
-                            rand_constrained_MVN(
-                                round.(
-                                Matrix(Hermitian(
-                                Sigma ./ max(kappa0[m], dm))); digits = 8),
-                                mu0[m,:],
-                                labels[m] .- 1
-                            )
-                        end
-                end
-
                 @inbounds NIW[i,m] = Dict("mu" => mu, "Sigma" => Sigma)
             else
                 # Draw from the prior
                 @inbounds Sigma = rand_constrained_IW(
                     round.(
-                    Matrix(Hermitian(Psi0[:,:,m] * max(kappa0[m], dm))); digits=8),
+                    Matrix(Hermitian(Psi0[:,:,m])); digits=8),
                     max(kappa0[m], dm),
                     labels[m] .- 1
-                )
+                ) ./ max(kappa0[m], dm)
 
                 @inbounds mu = rand_constrained_MVN(
                     round.(
-                    Matrix(Hermitian(Sigma ./ max(kappa0[m], dm))); digits = 8),
+                    Matrix(Hermitian(Sigma)); digits = 8),
                     mu0[m,:],
                     labels[m] .- 1
                 )

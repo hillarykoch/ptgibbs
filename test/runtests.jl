@@ -200,13 +200,17 @@ prop_chain = hcat(map(x -> x[2], chain[1,:])...)
 prop_est = mapslices(x -> mean(x), prop_chain; dims = 2)
 
 z_chain = map(x -> x[3], chain[1,:]);
-z_est = @> begin
-                hcat(hcat(z_chain[1,:]...), hcat(z_chain[2,:]...))
+rles = @> begin
+                hcat(z_chain...)
                 @>> mapslices(sort; dims = 2)
                 @>> mapslices(rle; dims = 2)
-                @>> map(x -> x[1][argmax(x[2])])
-                @> reshape((n,))
-end;
+end
+
+maxidx = map(x -> findmax(x[2])[2], rles)
+z_ests = @as z_ests map(x -> x[1], rles) begin
+        @>> map( (x,y) -> x[y], z_ests, maxidx)
+        @> reshape(z_ests, (n,))
+end
 
 # Test for reasonable parameter estimates and classification accuracy
 mutest = isapprox.(hcat(mu_ests...)', mu0; atol = .1);
@@ -214,9 +218,9 @@ Sigmatest = isapprox.(hcat([[Psi0[j,j,i] for i in 1:nm] for j in 1:dm]...),
                         hcat(map(x -> x[1:2:3], Sigma_ests)...)'; atol = .15)
 rhotest = isapprox.(Psi0[1,2,:], hcat(Sigma_ests...)[2,:]; atol = .1)
 proptest = isapprox.(prop .- prop_est, 0; atol = .05);
-correct_class = sum(z_est[collect(1:1:sum(zprop.==1))] .== 1) +
-                sum(z_est[collect((sum(zprop.==1) + 1):1:(sum(zprop.==1) + sum(zprop .== 2)))] .== 2) +
-                sum(z_est[collect((sum(zprop.==1) + sum(zprop.==2) + 1):1:n)] .== 3);
+correct_class = sum(z_ests[collect(1:1:sum(zprop.==1))] .== 1) +
+                sum(z_ests[collect((sum(zprop.==1) + 1):1:(sum(zprop.==1) + sum(zprop .== 2)))] .== 2) +
+                sum(z_ests[collect((sum(zprop.==1) + sum(zprop.==2) + 1):1:n)] .== 3);
 
 @testset "reasonable parameter estimates" begin
         [@test x for x in mutest]

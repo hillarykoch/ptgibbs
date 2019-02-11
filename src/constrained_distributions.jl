@@ -118,12 +118,5 @@ function rand_constrained_MVN(Sigma, mu0, h)
         mu0[zeroidx] = zeros(sz)
     end
 
-    #for i in 1:dm
-        #if h[i] == 0
-            #z[i] = 0
-            #mu0[i] = 0
-        #end
-    #end
-
     A * z .+ mu0
 end

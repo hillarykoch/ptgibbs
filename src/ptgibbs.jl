@@ -8,7 +8,6 @@ import StatsBase: rle, pweights
 import RLEVectors: rep
 import DataFrames: DataFrame, colwise
 
-#using Distributed
 using Statistics
 using Distributions
 using LinearAlgebra
@@ -49,8 +48,14 @@ function make_gibbs_update(dat::DataFrame, param::Array, hyp::Tuple, alpha::Arra
                 Sigma_hat = get(NIW[i,1][m], "Sigma", 0)
 
                 # Pre-compute some inverses we use multiple times
+
+                # Original code
+                #iS0 = inv(Sigma_hat .* tune_df ./ nz[m])
+                #iS = inv(Sigma_hat .* tune_df)
+
+                # modified temporarily for testing
                 iS0 = inv(Sigma_hat .* tune_df ./ nz[m])
-                iS = inv(Sigma_hat .* tune_df)
+                iS = inv(Sigma_hat .* tune_df ./ nz[m])
 
                 # Check if we are ok for mu
                 likelihood_check = rep(false, times = dm)
@@ -82,6 +87,7 @@ function make_gibbs_update(dat::DataFrame, param::Array, hyp::Tuple, alpha::Arra
                 @inbounds NIW_out[i,1][m]["mu"] = mu
             else
                 # Draw from the prior
+                Sigma_hat = get(NIW[i,1][m], "Sigma", 0)
                 @inbounds mu = rand_constrained_MVN(
                     round.(
                         Matrix(Hermitian(Sigma_hat)); digits = 8),
@@ -96,7 +102,7 @@ function make_gibbs_update(dat::DataFrame, param::Array, hyp::Tuple, alpha::Arra
     # Sample new cluster labels
     zout = copy(z)
     for i in 1:nw
-        distns = map(x -> MvNormal(x["mu"], Matrix(Hermitian(x["Sigma"]))), NIW[i,1])
+        distns = map(x -> MvNormal(x["mu"], Matrix(Hermitian(x["Sigma"]))), NIW_out[i,1])
         p = Array{Float64,2}(undef,n,nm)
         for m in 1:nm
             @inbounds p[:,m] = pdf(distns[m], Matrix(dat)') * prop[i][m]
@@ -108,14 +114,15 @@ function make_gibbs_update(dat::DataFrame, param::Array, hyp::Tuple, alpha::Arra
     propout = copy(prop)
     for i in 1:nw
         rles = @> begin
-            z[i]
+            zout[i]
             @>sort()
             @>rle()
         end
         nz = zeros(nm)
         nz[rles[1]] = rles[2]
-        propout[i] = rand(Dirichlet(alpha + nz))
+        propout[i] = rand(Dirichlet(alpha .+ nz))
     end
+
     (zout, NIW_out, propout)
 end
 
@@ -281,8 +288,8 @@ function make_mcmc_move(dat::DataFrame,
         curr_Sigmas = map(x -> get(x, "Sigma", 0), NIW[i,1])
         for m in 1:nm
             # Draw Sigma star from constrained Wishart distribution
-            Sigma_star = @inbounds propose_Sigma(curr_Sigmas[m], labels[m], tune_df=100)
-            lhaste = @inbounds get_lhastings(curr_Sigmas[m], Sigma_star, tune_df=100)
+            Sigma_star = @inbounds propose_Sigma(curr_Sigmas[m], labels[m]; tune_df=tune_df)
+            lhaste = @inbounds get_lhastings(curr_Sigmas[m], Sigma_star; tune_df=tune_df)
 
             # Compute the log prior for this proposal - log prior for the current estimate
             lp = @inbounds logprior(Matrix(Hermitian(curr_Sigmas[m])), Matrix(Hermitian(Sigma_star)), mu_hats[m], hyp, m; tune_df = tune_df)
@@ -342,17 +349,18 @@ function run_mcmc(dat::DataFrame,
 
     @showprogress 1 "Running the MCMC..."  for i in 1:nstep
         # Proposes IW cluster at a time, accepts/rejects/returns new IW
-        NIW, acpt = make_mcmc_move(dat, param, hyp, alpha, labels; tune_df=tune_df)
+        NIW, acpt = make_mcmc_move(dat, chain[:,i], hyp, alpha, labels; tune_df=tune_df)
         acpt_tracker = acpt_tracker .+ acpt
 
         # Makes Gibbs updates of means, mixing weights, and class labels
-        z, NIW, prop = make_gibbs_update(dat, param, hyp, alpha, labels; tune_df = tune_df)
+        newz, newNIW, newprop = make_gibbs_update(dat, chain[:,i], hyp, alpha, labels; tune_df=tune_df)
 
         for j in 1:nw
             chain_link = deepcopy(param)
-            map!(x -> x, chain_link[j,1][1], NIW[j,1])
-            map!(x -> x, chain_link[j,1][2], prop[j,1])
-            map!(x -> x, chain_link[j,1][3], z[j,1])
+
+            map!(x -> x, chain_link[j,1][1], newNIW[j,1])
+            map!(x -> x, chain_link[j,1][2], newprop[j,1])
+            map!(x -> x, chain_link[j,1][3], newz[j,1])
 
             @inbounds chain[j,i+1] = deepcopy(chain_link[j,1])
         end

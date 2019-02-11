@@ -8,7 +8,7 @@ import StatsBase: rle, pweights
 import RLEVectors: rep
 import DataFrames: DataFrame, colwise
 
-using Distributed
+#using Distributed
 using Statistics
 using Distributions
 using LinearAlgebra
@@ -96,7 +96,7 @@ function make_gibbs_update(dat::DataFrame, param::Array, hyp::Tuple, alpha::Arra
     # Sample new cluster labels
     zout = copy(z)
     for i in 1:nw
-        distns = map(x -> MvNormal(x["mu"], x["Sigma"]), NIW[i,1])
+        distns = map(x -> MvNormal(x["mu"], Matrix(Hermitian(x["Sigma"]))), NIW[i,1])
         p = Array{Float64,2}(undef,n,nm)
         for m in 1:nm
             @inbounds p[:,m] = pdf(distns[m], Matrix(dat)') * prop[i][m]
@@ -326,6 +326,7 @@ function run_mcmc(dat::DataFrame,
 
     nw = size(param, 1)
     n, nd = size(dat)
+    nm = size(param[1,1][2],1)
 
     chain = Array{
                     Tuple{Array{Dict{String,Array{Float64,N} where N},1},

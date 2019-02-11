@@ -1,4 +1,3 @@
-
 using ptgibbs
 
 import ptgibbs: run_mcmc
@@ -17,13 +16,14 @@ These are tests for the gibbs sampler
 """
 
 # Instantiate parameters for test model
-nw = 2; # number of walkers per temp
-nt = 3; # number of temperatures
+nw = 1; # number of walkers per temp
+nt = 1; # number of temperatures
 dm = 2; # dimension of data
 mu1 = [0,0];
 mu2 = [4,4];
 mu3 = [-2.5,6];
-#labs = ["11", "22", "02"]
+labels = ["11", "22", "02"]
+#labs = hcat([(parse.(Int64, split(x, "")) .- 1) for x in labels])
 sig1 = Matrix{Float64}(I,dm,dm)
 sig2 = Matrix{Float64}(I,dm,dm)*1.2 .+ .7;
 sig3 = reshape([.85, -.6, -.6,.95], (2,2));
@@ -62,46 +62,29 @@ for i in 1:nw
         for j in 1:nt
                 dictionary = Dict{String,Array{Float64,N} where N}[]
                 for m in 1:nm
-                        #Sigma = rand(InverseWishart(nu0[m], nu0[m] * Matrix{Float64}(I,dm,dm)))
-                        #mu = rand(MvNormal(mu0[m,:], Sigma / nu0[m]))
-                        Sigma = rand_constrained_IW(Psi0[:,:,m], nu0[m], labs[m]) / nu0[m]
-                        mu = rand_constrained_MVN(Sigma, mu0[m,:], labs[m])
+                        Sigma = Psi0[:,:,m]
+                        mu = mu0[m,:]
 
                         push!(dictionary, Dict("mu" => mu, "Sigma" => Sigma))
                 end
-                initprop = rand(Dirichlet(alpha))
-                z = rand(1:nm, n)
+                initprop = prop
+                z = zprop
                 param[i,j] = (dictionary, initprop, z)
         end
 end;
 
-# inverse temperatures, number of steps, and burn-in steps
-betas = collect(range(1, stop=0.001, length=nt));
+nstep = 1000;
+chain, acpt = run_mcmc(df1[[:x,:y]], param, hyp, alpha, nstep, labels; tune_df = 50);
 
-nstep = 500;
-burnin = 10;
+# Process the output
+norm_chain = map(x->x[1], chain[1,:])
 
-# Define log likelihood and log prior functions
-ll = ptgibbs.loglike;
-lp = ptgibbs.logprior;
-
-# Run chain
-chain, _, _, _ =
-        ptgibbs.run_mcmc(df1[[:x,:y]], param, hyp, alpha, ll, lp, betas, nstep, burnin);
-        #run_constr_mcmc(df1[[:x,:y]], param, hyp, alpha, ll, lp, betas, nstep, burnin, labs);
-#chain, _, _ =
-        #run_gibbs(df1[[:x,:y]], param, hyp, alpha, ll, lp, nstep, burnin);
-#        run_constr_gibbs(df1[[:x,:y]], param, hyp, alpha, ll, lp, nstep, burnin, labs);
-
-# Compute some estimates and get cluster labels
-norm_chain = map(x -> x[1], chain)[:,1,:];
-#norm_chain = map(x -> x[1], chain);
 mu_ests = [
         [
         @> begin
                 norm_chain
-                @>> map(x -> x[1])
-                @>> map(x -> get(x, "mu", 0)[1])
+                @>> map(x -> x[1]) # First cluster
+                @>> map(x -> get(x, "mu", 0)[1]) # First dimension
                 @> mean
         end
         ,
@@ -142,28 +125,78 @@ mu_ests = [
                 @> mean
         end
         ]];
-
-prop_chain = map(x -> x[2], chain)[:,1,:];
-prop_est = [
+Sigma_ests = [
+        [
         @> begin
-                prop_chain
+                norm_chain
+                @>> map(x -> x[1]) # First cluster
+                @>> map(x -> get(x, "Sigma", 0)[1,1]) # First dimension
+                @> mean
+        end
+        ,
+        @> begin
+                norm_chain
                 @>> map(x -> x[1])
+                @>> map(x -> get(x, "Sigma", 0)[1,2])
                 @> mean
         end
         ,
         @> begin
-                prop_chain
+                norm_chain
+                @>> map(x -> x[1])
+                @>> map(x -> get(x, "Sigma", 0)[2,2])
+                @> mean
+        end
+        ],
+        [
+        @> begin
+                norm_chain
                 @>> map(x -> x[2])
+                @>> map(x -> get(x, "Sigma", 0)[1,1])
                 @> mean
         end
         ,
         @> begin
-                prop_chain
-                @>> map(x -> x[3])
+                norm_chain
+                @>> map(x -> x[2])
+                @>> map(x -> get(x, "Sigma", 0)[1,2])
                 @> mean
-        end];
+        end
+        ,
+        @> begin
+                norm_chain
+                @>> map(x -> x[2])
+                @>> map(x -> get(x, "Sigma", 0)[2,2])
+                @> mean
+        end
+        ],
+        [
+        @> begin
+                norm_chain
+                @>> map(x -> x[3])
+                @>> map(x -> get(x, "Sigma", 0)[1,1])
+                @> mean
+        end
+        ,
+        @> begin
+                norm_chain
+                @>> map(x -> x[3])
+                @>> map(x -> get(x, "Sigma", 0)[1,2])
+                @> mean
+        end
+        ,
+        @> begin
+                norm_chain
+                @>> map(x -> x[3])
+                @>> map(x -> get(x, "Sigma", 0)[2,2])
+                @> mean
+        end
+        ]];
 
-z_chain = map(x -> x[3], chain)[:,1,:];
+prop_chain = hcat(map(x -> x[2], chain[1,:])...)
+prop_est = mapslices(x -> mean(x), prop_chain; dims = 2)
+
+z_chain = map(x -> x[3], chain[1,:]);
 z_est = @> begin
                 hcat(hcat(z_chain[1,:]...), hcat(z_chain[2,:]...))
                 @>> mapslices(sort; dims = 2)
@@ -174,6 +207,9 @@ end;
 
 # Test for reasonable parameter estimates and classification accuracy
 mutest = isapprox.(hcat(mu_ests...)', mu0; atol = .1);
+Sigmatest = isapprox.(hcat([[Psi0[j,j,i] for i in 1:nm] for j in 1:dm]...),
+                        hcat(map(x -> x[1:2:3], Sigma_ests)...)'; atol = .15)
+rhotest = isapprox.(Psi0[1,2,:], hcat(Sigma_ests...)[2,:]; atol = .1)
 proptest = isapprox.(prop .- prop_est, 0; atol = .05);
 correct_class = sum(z_est[collect(1:1:sum(zprop.==1))] .== 1) +
                 sum(z_est[collect((sum(zprop.==1) + 1):1:(sum(zprop.==1) + sum(zprop .== 2)))] .== 2) +
@@ -182,6 +218,8 @@ correct_class = sum(z_est[collect(1:1:sum(zprop.==1))] .== 1) +
 @testset "reasonable parameter estimates" begin
         [@test x for x in mutest]
         [@test x for x in proptest]
+        [@test x for x in Sigmatest]
+        [@test x for x in rhotest]
         @test correct_class >= (.9*n)
 end;
 
@@ -196,8 +234,8 @@ Psi02 = reshape([1.1,-.7,-.4,0,-.7,.9,.8,0,-.4,.8,1.2,0,0,0,0,1], (4,4))
 h2 = [1,-1,-1,0]
 
 # Simulate NIW data
-sim1 = [rand_constrained_IW(Psi01, nu, h1) for i=1:10000]
-sim2 = [rand_constrained_IW(Psi02, nu, h2) for i=1:10000]
+sim1 = [rand_constrained_Wish(Psi01, nu, h1) for i=1:10000]
+sim2 = [rand_constrained_Wish(Psi02, nu, h2) for i=1:10000]
 
 meantest1 = isapprox.([
                 mean(map(x -> x[1,1], sim1)),

@@ -10,8 +10,8 @@ function test_Bmn(A::Array{Float64,2}, U::UpperTriangular{Float64,Array{Float64,
     @inbounds ( subU' * subA * subA' * subU )[m, n]
 end
 
-export rand_constrained_IW
-function rand_constrained_IW(Psi0, nu, h)
+export rand_constrained_Wish
+function rand_constrained_Wish(Psi0, nu, h)
     """
     Psi0 is some pos-def matrix that complies with restrictions imposed by h
     dm is the dimension
@@ -80,13 +80,13 @@ function rand_constrained_IW(Psi0, nu, h)
     end
 
     if size(zeroidx,1) == 0
-        return inv(U' * A * A' * U)
+        return U' * A * A' * U
     else
         matmult = (U' * A * A' * U)
         out = Matrix{Float64}(I, dm, dm)
         out[1:end .!= zeroidx, 1:end .!= zeroidx] = matmult
         out[1:end .== zeroidx, 1:end .== zeroidx] = [nu]
-        return inv(out)
+        return out
     end
 end
 
@@ -96,24 +96,34 @@ function rand_constrained_MVN(Sigma, mu0, h)
     dm = size(h,1)
 
     A = cholesky(Hermitian(Sigma)).L
+
     zeroidx = findall(h .== 0)
-    [A[zz, :] = zeros(dm) for zz in zeroidx]
-    [A[:, zz] = zeros(dm) for zz in zeroidx]
-    [A[zz,zz] = 1 for zz in zeroidx]
+    sz = size(zeroidx,1)
+    if sz > 0
+        [A[zz, :] = zeros(dm) for zz in zeroidx]
+        [A[:, zz] = zeros(dm) for zz in zeroidx]
+        [A[zz,zz] = 1 for zz in zeroidx]
+    end
 
+    # Find lower/upper bound for z
+    lub = inv(Matrix(A)) * (-1 * mu0)
 
-    # Simulate halfnormal noise
-    z = rand(Truncated(Normal(), 0, Inf), dm)
+    # Simulate truncated normal noise
+    z = [ ( sign(h[b]) == 1 ? rand(Truncated(Normal(), lub[b], Inf)) :
+            rand(Truncated(Normal(), -Inf, lub[b])) ) for b in 1:1:dm]
 
     # Adjust the sign as appropriate
-    for i in 1:dm
-        if h[i] == 0
-            z[i] = 0
-            mu0[i] = 0
-        else
-            z[i] = abs(z[i]) * sign(h[i])
-        end
+    if sz > 0
+        z[zeroidx] = zeros(sz)
+        mu0[zeroidx] = zeros(sz)
     end
+
+    #for i in 1:dm
+        #if h[i] == 0
+            #z[i] = 0
+            #mu0[i] = 0
+        #end
+    #end
 
     A * z .+ mu0
 end

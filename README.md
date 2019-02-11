@@ -22,11 +22,10 @@ If things went as they should, you should see something akin to this:
 ```console
 Testing ptgibbs
 
-Computing for burn-in...100%|███████████████████████████|
-Computing for main Markov chain...100%|█████████████████|
+Running the MCMC... 100%|███████████████████████████|
 
 Test Summary:                  | Pass  Total
-reasonable parameter estimates |   10     10
+reasonable parameter estimates |   19     19
 Test Summary:            | Pass  Total
 unbiased random matrices |   11     11
 Test Summary:                         | Pass  Total

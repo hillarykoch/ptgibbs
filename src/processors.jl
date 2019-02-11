@@ -1,3 +1,5 @@
+using Lazy
+
 export get_mu_chain
 function get_mu_chain(chain, cluster_num; walker_num = 1)
     """

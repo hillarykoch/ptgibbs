@@ -10,10 +10,14 @@ using Distributed
 using LinearAlgebra
 using Lazy
 using Distributions
+using Random
 
 """
 These are tests for the gibbs sampler
 """
+
+# Set seed
+Random.seed!(1);
 
 # Instantiate parameters for test model
 nw = 1; # number of walkers per temp

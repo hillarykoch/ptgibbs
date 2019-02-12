@@ -54,8 +54,8 @@ function make_gibbs_update(dat::DataFrame, param::Array, hyp::Tuple, alpha::Arra
                 #iS = inv(Sigma_hat .* tune_df)
 
                 # modified temporarily for testing
-                iS0 = inv(Sigma_hat .* tune_df ./ nz[m])
-                iS = inv(Sigma_hat .* tune_df ./ nz[m])
+                iS0 = inv(Sigma_hat ./ nz[m])
+                iS = inv(Sigma_hat)
 
                 # Check if we are ok for mu
                 likelihood_check = rep(false, times = dm)

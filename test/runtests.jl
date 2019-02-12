@@ -77,7 +77,7 @@ for i in 1:nw
         end
 end;
 
-nstep = 1500;
+nstep = 1250;
 chain, acpt = run_mcmc(df1[[:x,:y]], param, hyp, alpha, nstep, labels; tune_df = 10);
 
 # Process the output
@@ -215,7 +215,7 @@ end
 # Test for reasonable parameter estimates and classification accuracy
 mutest = isapprox.(hcat(mu_ests...)', mu0; atol = .1);
 Sigmatest = isapprox.(hcat([[Psi0[j,j,i] for i in 1:nm] for j in 1:dm]...),
-                        hcat(map(x -> x[1:2:3], Sigma_ests)...)'; atol = .15)
+                        hcat(map(x -> x[1:2:3], Sigma_ests)...)'; atol = .1)
 rhotest = isapprox.(Psi0[1,2,:], hcat(Sigma_ests...)[2,:]; atol = .1)
 proptest = isapprox.(prop .- prop_est, 0; atol = .05);
 correct_class = sum(z_ests[collect(1:1:sum(zprop.==1))] .== 1) +

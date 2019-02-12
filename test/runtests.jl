@@ -77,8 +77,8 @@ for i in 1:nw
         end
 end;
 
-nstep = 1250;
-chain, acpt = run_mcmc(df1[[:x,:y]], param, hyp, alpha, nstep, labels; tune_df = 25);
+nstep = 1500;
+chain, acpt = run_mcmc(df1[[:x,:y]], param, hyp, alpha, nstep, labels; tune_df = 10);
 
 # Process the output
 norm_chain = map(x->x[1], chain[1,:])

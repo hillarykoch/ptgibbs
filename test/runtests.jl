@@ -13,7 +13,7 @@ using Distributions
 using Random
 
 """
-These are tests for the gibbs sampler
+These are tests for the metropolis-within-gibbs sampler
 """
 
 # Set seed

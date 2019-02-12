@@ -85,7 +85,8 @@ function rand_constrained_Wish(Psi0, nu, h)
         matmult = (U' * A * A' * U)
         out = Matrix{Float64}(I, dm, dm)
         out[setdiff(1:1:dm, zeroidx), setdiff(1:1:dm, zeroidx)] = matmult
-        out[setdiff(1:1:dm, zeroidx), setdiff(1:1:dm, zeroidx)] = [nu]
+
+        [out[zz, zz] = nu for zz in zeroidx]
         return out
     end
 end

@@ -39,4 +39,4 @@ Testing ptgibbs tests passed
 ---------------------------------------------------------------------------------------------------------------------------------------
 
 
-<sub><sup>*This package was originally designed with a Metropolis proposal for the mixing weights in the model (now, it is Gibbs). Since all updates are Gibbs, there is no need for the ''tempered'' portion of the algorithm. A tempered and standard version are nevertheless supported, in case of offering versions with Metropolis proposals in the future.*</sub></sup>
+<sub><sup>*This package was originally designed to support parallel tempering, as there is a Metropolis proposal in the algorithm. Currently, this feature is no longer supported, though it may return in the future.*</sub></sup>

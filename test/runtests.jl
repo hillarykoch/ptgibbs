@@ -77,7 +77,7 @@ for i in 1:nw
         end
 end;
 
-nstep = 1000;
+nstep = 1250;
 chain, acpt = run_mcmc(df1[[:x,:y]], param, hyp, alpha, nstep, labels; tune_df = 25);
 
 # Process the output

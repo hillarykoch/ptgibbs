@@ -30,8 +30,8 @@ function rand_constrained_Wish(Psi0, nu, h)
         subh = h
         subPsi0 = Psi0
     else
-        subh = h[1:end .!= zeroidx]
-        subPsi0 = @inbounds Psi0[1:end .!= zeroidx, 1:end .!= zeroidx]
+        subh = h[setdiff(1:1:dm, zeroidx)]
+        subPsi0 = @inbounds Psi0[setdiff(1:1:dm, zeroidx), setdiff(1:1:dm, zeroidx)]
     end
 
     subdm = size(subPsi0, 1)
@@ -84,8 +84,8 @@ function rand_constrained_Wish(Psi0, nu, h)
     else
         matmult = (U' * A * A' * U)
         out = Matrix{Float64}(I, dm, dm)
-        out[1:end .!= zeroidx, 1:end .!= zeroidx] = matmult
-        out[1:end .== zeroidx, 1:end .== zeroidx] = [nu]
+        out[setdiff(1:1:dm, zeroidx), setdiff(1:1:dm, zeroidx)] = matmult
+        out[setdiff(1:1:dm, zeroidx), setdiff(1:1:dm, zeroidx)] = [nu]
         return out
     end
 end

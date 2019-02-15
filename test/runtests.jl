@@ -6,7 +6,6 @@ import RLEVectors: rep
 import DataFrames: DataFrame, colwise, categorical!
 
 using Test
-using Distributed
 using LinearAlgebra
 using Lazy
 using Distributions

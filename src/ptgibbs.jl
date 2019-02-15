@@ -149,7 +149,7 @@ function log_likelihood(dat::DataFrame,
         mvn_distn_curr = MvNormal(mu_hat, curr_Sigma)
         ll_normal = sum(logpdf(mvn_distn_star, subdat')) - sum(logpdf(mvn_distn_curr, subdat'))
     else
-        ll_normal = 0
+        ll_normal = 0.0
     end
 
     # Establish the multivariate distributions that describe the mixture
@@ -211,7 +211,7 @@ function logprior(curr_Sigma::Array, Sigma_star::Array, mu_hat::Array, hyp::Tupl
     """
     kappa0, mu0, Psi0 = hyp
     dm = size(curr_Sigma, 1)
-    nz = @inbounds max(kappa0[cluster_num], dm)
+    nz = @inbounds max(kappa0[cluster_num], dm + 2)
 
     norm_distn_curr = @inbounds MvNormal(mu0[cluster_num,:], curr_Sigma .* tune_df ./ nz)#./ nz)
     norm_distn_star = @inbounds MvNormal(mu0[cluster_num,:], Sigma_star .* tune_df ./ nz)#./ nz)

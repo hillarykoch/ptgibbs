@@ -80,3 +80,19 @@ function get_z_chain(chain; walker_num = 1)
 
     return z_chain
 end
+
+export get_z_ests
+function get_z_ests(z_chain)
+    n = size(z_chain,1)
+    rles = @> begin
+                    z_chain
+                    @>> mapslices(sort; dims = 2)
+                    @>> mapslices(rle; dims = 2)
+    end
+    maxidx = map(x -> findmax(x[2])[2], rles)
+    z_ests = @as z_ests map(x -> x[1], rles) begin
+            @>> map( (x,y) -> x[y], z_ests, maxidx)
+            @> reshape(z_ests, (n,))
+    end
+     z_ests
+ end

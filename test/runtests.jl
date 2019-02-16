@@ -81,6 +81,7 @@ tune_df = rep(1000.0, each = nm)
 chain, acpt_chain, tune_df_chain = run_mcmc(df1[[:x,:y]], param, hyp, alpha, nstep, labels, tune_df);
 
 # Process the output
+norm_chain = map(x -> x[1], chain)
 mu_ests = [ mapslices(x -> mean(x), get_mu_chain(chain, m); dims = 2) for m in 1:1:nm ]
 Sigma_ests = [
         [

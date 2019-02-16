@@ -1,6 +1,6 @@
-#using ptgibbs
+using ptgibbs
 
-#import ptgibbs: run_mcmc
+import ptgibbs: run_mcmc
 import StatsBase: rle
 import RLEVectors: rep
 import DataFrames: DataFrame, colwise, categorical!

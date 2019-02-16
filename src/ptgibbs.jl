@@ -15,7 +15,7 @@ using Lazy
 using ProgressMeter
 
 export make_gibbs_update
-function make_gibbs_update(dat::DataFrame, param::Array, hyp::Tuple, alpha::Array, labels::Array; tune_df::Int64 = 100)
+function make_gibbs_update(dat::DataFrame, param::Array, hyp::Tuple, alpha::Array, labels::Array, tune_df::Array{Float64,1})
     NIW = map(x -> x[1], param)
     prop = map(x -> x[2], param)
     z = map(x -> x[3], param)
@@ -48,13 +48,7 @@ function make_gibbs_update(dat::DataFrame, param::Array, hyp::Tuple, alpha::Arra
                 Sigma_hat = get(NIW[i,1][m], "Sigma", 0)
 
                 # Pre-compute some inverses we use multiple times
-
-                # Original code
-                #iS0 = inv(Sigma_hat .* tune_df ./ nz[m])
-                #iS = inv(Sigma_hat .* tune_df)
-
-                # modified temporarily for testing
-                iS0 = inv(Sigma_hat ./ nz[m])
+                iS0 = inv(Sigma_hat ./ max(kappa0[m], dm))
                 iS = inv(Sigma_hat)
 
                 # Check if we are ok for mu
@@ -134,7 +128,9 @@ function log_likelihood(dat::DataFrame,
                         cluster_num::Int64,
                         curr_Sigma::Array,
                         Sigma_star::Array,
-                        mu_hat::Array)
+                        mu_hat::Array,
+                        tune_df::Array{Float64,1},
+                        old_tune_df::Array{Float64,1})
     NIW = map(x -> x[1], param)
     prop = map(x -> x[2], param)
     z = map(x -> x[3], param)
@@ -147,6 +143,8 @@ function log_likelihood(dat::DataFrame,
     if nz >= dm
         mvn_distn_star = MvNormal(mu_hat, Sigma_star)
         mvn_distn_curr = MvNormal(mu_hat, curr_Sigma)
+        #mvn_distn_star = MvNormal(mu_hat, Sigma_star .* tune_df[cluster_num])
+        #mvn_distn_curr = MvNormal(mu_hat, curr_Sigma .* old_tune_df[cluster_num])
         ll_normal = sum(logpdf(mvn_distn_star, subdat')) - sum(logpdf(mvn_distn_curr, subdat'))
     else
         ll_normal = 0.0
@@ -154,8 +152,10 @@ function log_likelihood(dat::DataFrame,
 
     # Establish the multivariate distributions that describe the mixture
     distns_curr = map(x -> MvNormal(get(x, "mu", 0), Matrix(Hermitian(get(x, "Sigma", 0)))), NIW[walker_num,1])
+    #distns_curr = [ MvNormal(get(NIW[walker_num,1][x], "mu", 0),  Matrix(Hermitian(get(NIW[walker_num,1][x], "Sigma", 0))) .* old_tune_df[cluster_num]) for x in 1:1:nm]
     distns_star = deepcopy(distns_curr)
     distns_star[cluster_num] = MvNormal(get(NIW[walker_num,1][cluster_num], "mu", 0), Sigma_star)
+    #distns_star[cluster_num] = MvNormal(get(NIW[walker_num,1][cluster_num], "mu", 0),  Sigma_star .* old_tune_df[cluster_num])
 
     # Compute density of the data in each mixture component
     p_curr = Array{Float64,2}(undef,n,nm)
@@ -202,7 +202,7 @@ function log_likelihood(dat::DataFrame,
 end
 
 export logprior
-function logprior(curr_Sigma::Array, Sigma_star::Array, mu_hat::Array, hyp::Tuple, cluster_num::Int64; tune_df::Int64 = 100)
+function logprior(curr_Sigma::Array, Sigma_star::Array, mu_hat::Array, hyp::Tuple, cluster_num::Int64, tune_df::Float64, old_tune_df::Float64)
     """
     The prior is based on two main parts
         1. the density of curr_Sigma and Sigma_star given the prior on Sigma
@@ -211,22 +211,22 @@ function logprior(curr_Sigma::Array, Sigma_star::Array, mu_hat::Array, hyp::Tupl
     """
     kappa0, mu0, Psi0 = hyp
     dm = size(curr_Sigma, 1)
-    nz = @inbounds max(kappa0[cluster_num], dm + 2)
+    mnz = @inbounds max(kappa0[cluster_num], dm + 2)
 
-    norm_distn_curr = @inbounds MvNormal(mu0[cluster_num,:], curr_Sigma .* tune_df ./ nz)#./ nz)
-    norm_distn_star = @inbounds MvNormal(mu0[cluster_num,:], Sigma_star .* tune_df ./ nz)#./ nz)
-    invwish_distn = @inbounds InverseWishart(nz, Psi0[:,:,cluster_num])
+    norm_distn_curr = @inbounds MvNormal(mu0[cluster_num,:], curr_Sigma .* old_tune_df ./ mnz)
+    norm_distn_star = @inbounds MvNormal(mu0[cluster_num,:], Sigma_star .* tune_df ./ mnz)
+    #norm_distn_curr = @inbounds MvNormal(mu0[cluster_num,:], curr_Sigma)
+    #norm_distn_star = @inbounds MvNormal(mu0[cluster_num,:], Sigma_star)
+    invwish_distn = @inbounds InverseWishart(mnz, Psi0[:,:,cluster_num])
 
-    linvwish_ratio = logpdf(invwish_distn, Sigma_star ./ (nz - dm - 1)) - logpdf(invwish_distn, curr_Sigma ./ (nz - dm - 1))
+    linvwish_ratio = logpdf(invwish_distn, Sigma_star ./ (mnz - dm - 1)) - logpdf(invwish_distn, curr_Sigma ./ (mnz - dm - 1))
     lnorm_ratio = logpdf(norm_distn_star, mu_hat) - logpdf(norm_distn_curr, mu_hat)
 
     linvwish_ratio + lnorm_ratio
 end
 
 export get_lhastings
-function get_lhastings(curr_Sigma::Array,
-                        Sigma_star::Array;
-                        tune_df::Int64 = 100)
+function get_lhastings(curr_Sigma::Array, Sigma_star::Array, tune_df::Float64)
     """
     The ratio of two Wishart distributions (all indicators cancel out)
     """
@@ -239,9 +239,7 @@ function get_lhastings(curr_Sigma::Array,
 end
 
 export propose_Sigma
-function propose_Sigma(curr_Sigma::Array,
-                        lab::Array;
-                        tune_df::Int64 = 100)
+function propose_Sigma(curr_Sigma::Array, lab::Array, tune_df::Float64)
     """
       Draw a covariance from the constrained Wishart distribution
     """
@@ -254,8 +252,9 @@ function make_mcmc_move(dat::DataFrame,
                         param::Array,
                         hyp::Tuple,
                         alpha::Array{Float64,1},
-                        labels::Array;
-                        tune_df::Int64 = 100)
+                        labels::Array,
+                        tune_df::Array{Float64,1},
+                        old_tune_df::Array{Float64,1})
     """
       Make proposals cluster-at-a-time
       For current parameter estimates and current cluster,
@@ -288,14 +287,14 @@ function make_mcmc_move(dat::DataFrame,
         curr_Sigmas = map(x -> get(x, "Sigma", 0), NIW[i,1])
         for m in 1:nm
             # Draw Sigma star from constrained Wishart distribution
-            Sigma_star = @inbounds propose_Sigma(curr_Sigmas[m], labels[m]; tune_df=tune_df)
-            lhaste = @inbounds get_lhastings(curr_Sigmas[m], Sigma_star; tune_df=tune_df)
+            Sigma_star = @inbounds propose_Sigma(curr_Sigmas[m], labels[m], tune_df[m])
+            lhaste = @inbounds get_lhastings(curr_Sigmas[m], Sigma_star, tune_df[m])
 
             # Compute the log prior for this proposal - log prior for the current estimate
-            lp = @inbounds logprior(Matrix(Hermitian(curr_Sigmas[m])), Matrix(Hermitian(Sigma_star)), mu_hats[m], hyp, m; tune_df = tune_df)
+            lp = @inbounds logprior(Matrix(Hermitian(curr_Sigmas[m])), Matrix(Hermitian(Sigma_star)), mu_hats[m], hyp, m, tune_df[m], old_tune_df[m])
 
             # Compute the log likelihood for this proposal - log likelihood for the current estimate
-            ll = @inbounds log_likelihood(dat, param, nz[m], i, m, Matrix(Hermitian(curr_Sigmas[m])), Matrix(Hermitian(Sigma_star)), mu_hats[m])
+            ll = @inbounds log_likelihood(dat, param, max(nz[m], kappa0[m]), i, m, Matrix(Hermitian(curr_Sigmas[m])), Matrix(Hermitian(Sigma_star)), mu_hats[m], tune_df, old_tune_df)
 
             # If random uniform small enough, update Sigma to Sigma_star
             if log(rand(Uniform(0,1))[1]) < (ll + lp + lhaste)
@@ -314,8 +313,9 @@ function run_mcmc(dat::DataFrame,
                     hyp::Tuple,
                     alpha::Array{Float64,1},
                     nstep::Int64,
-                    labels::Array{String,1};
-                    tune_df::Int64 = 100) #tune_df might become an array
+                    labels::Array{String,1},
+                    tune_df::Array{Float64,1};
+                    opt_rate::Float64 = 0.3)
     """
       The function will return `(chain, chainloglike, chainlogprior)` where
         each returned chain value has an extra dimension appended counting steps of the
@@ -341,31 +341,48 @@ function run_mcmc(dat::DataFrame,
                     Array{Int64,1}}
                 }(undef, nw, nstep + 1)
 
-
     for j in 1:nw
         chain[j,1] = deepcopy(param[j,1])
     end
     acpt_tracker = zeros(nm)
 
+    # For tracking the acceptance rate, per cluster, for the adaptive tuning variance
+    win_len = min(nstep, 50)
+    acpt_win = zeros(nm, win_len)
+
+    old_tune_df = deepcopy(tune_df)
+    acpt_chain = zeros(nm, nstep)
+    tune_df_chain = zeros(nm, nstep)
+
     @showprogress 1 "Running the MCMC..."  for i in 1:nstep
         # Proposes IW cluster at a time, accepts/rejects/returns new IW
-        NIW, acpt = make_mcmc_move(dat, chain[:,i], hyp, alpha, labels; tune_df=tune_df)
+        NIW, acpt = make_mcmc_move(dat, chain[:,i], hyp, alpha, labels, tune_df, old_tune_df)
         acpt_tracker = acpt_tracker .+ acpt
+        @inbounds acpt_win[:, (i-1) % win_len + 1] = acpt
 
         # Makes Gibbs updates of means, mixing weights, and class labels
-        newz, newNIW, newprop = make_gibbs_update(dat, chain[:,i], hyp, alpha, labels; tune_df=tune_df)
+        newz, newNIW, newprop = make_gibbs_update(dat, chain[:,i], hyp, alpha, labels, tune_df)
+
+        if i > 50
+            # Update tuning parameter per cluster
+            gamma1 = 10 / (i ^ 0.8)
+            old_tune_df = copy(tune_df)
+            @inbounds [tune_df[m] = update_tune_df(tune_df[m], mean(acpt_win[m,:]), opt_rate, gamma1) for m in 1:1:nm]
+        end
 
         for j in 1:nw
             chain_link = deepcopy(param)
 
-            map!(x -> x, chain_link[j,1][1], newNIW[j,1])
-            map!(x -> x, chain_link[j,1][2], newprop[j,1])
-            map!(x -> x, chain_link[j,1][3], newz[j,1])
+            @inbounds map!(x -> x, chain_link[j,1][1], newNIW[j,1])
+            @inbounds map!(x -> x, chain_link[j,1][2], newprop[j,1])
+            @inbounds map!(x -> x, chain_link[j,1][3], newz[j,1])
 
             @inbounds chain[j,i+1] = deepcopy(chain_link[j,1])
+            @inbounds acpt_chain[:,i] = copy(acpt_tracker) ./ i
+            @inbounds tune_df_chain[:,i] = tune_df
         end
     end
-    (chain, acpt_tracker)
+    (chain, acpt_chain, tune_df_chain)
 end
 
 end # end the module

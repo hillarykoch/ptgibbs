@@ -1,6 +1,6 @@
-using ptgibbs
+#using ptgibbs
 
-import ptgibbs: run_mcmc
+#import ptgibbs: run_mcmc
 import StatsBase: rle
 import RLEVectors: rep
 import DataFrames: DataFrame, colwise, categorical!
@@ -28,8 +28,8 @@ mu3 = [-2.5,6];
 labels = ["11", "22", "02"]
 #labs = hcat([(parse.(Int64, split(x, "")) .- 1) for x in labels])
 sig1 = Matrix{Float64}(I,dm,dm)
-sig2 = Matrix{Float64}(I,dm,dm)*1.2 .+ .7;
-sig3 = reshape([.85, -.6, -.6,.95], (2,2));
+sig2 = Matrix{Float64}(I,dm,dm)*1.2 .+ .7
+sig3 = reshape([.85, -.6, -.6,.95], (2,2))
 prop = [.2,.45, .35];
 nm = size(prop)[1]; # Number of clusters
 n = 1000;
@@ -76,57 +76,12 @@ for i in 1:nw
         end
 end;
 
-nstep = 1250;
-chain, acpt = run_mcmc(df1[[:x,:y]], param, hyp, alpha, nstep, labels; tune_df = 10);
+nstep = 1000;
+tune_df = rep(1000.0, each = nm)
+chain, acpt_chain, tune_df_chain = run_mcmc(df1[[:x,:y]], param, hyp, alpha, nstep, labels, tune_df);
 
 # Process the output
-norm_chain = map(x->x[1], chain[1,:])
-mu_ests = [
-        [
-        @> begin
-                norm_chain
-                @>> map(x -> x[1]) # First cluster
-                @>> map(x -> get(x, "mu", 0)[1]) # First dimension
-                @> mean
-        end
-        ,
-        @> begin
-                norm_chain
-                @>> map(x -> x[1])
-                @>> map(x -> get(x, "mu", 0)[2])
-                @> mean
-        end
-        ],
-        [
-        @> begin
-                norm_chain
-                @>> map(x -> x[2])
-                @>> map(x -> get(x, "mu", 0)[1])
-                @> mean
-        end
-        ,
-        @> begin
-                norm_chain
-                @>> map(x -> x[2])
-                @>> map(x -> get(x, "mu", 0)[2])
-                @> mean
-        end
-        ],
-        [
-        @> begin
-                norm_chain
-                @>> map(x -> x[3])
-                @>> map(x -> get(x, "mu", 0)[1])
-                @> mean
-        end
-        ,
-        @> begin
-                norm_chain
-                @>> map(x -> x[3])
-                @>> map(x -> get(x, "mu", 0)[2])
-                @> mean
-        end
-        ]];
+mu_ests = [ mapslices(x -> mean(x), get_mu_chain(chain, m); dims = 2) for m in 1:1:nm ]
 Sigma_ests = [
         [
         @> begin
@@ -195,21 +150,12 @@ Sigma_ests = [
         end
         ]];
 
-prop_chain = hcat(map(x -> x[2], chain[1,:])...)
+prop_chain = get_prop_chain(chain)
 prop_est = mapslices(x -> mean(x), prop_chain; dims = 2)
 
-z_chain = map(x -> x[3], chain[1,:]);
-rles = @> begin
-                hcat(z_chain...)
-                @>> mapslices(sort; dims = 2)
-                @>> mapslices(rle; dims = 2)
-end
+z_chain = get_z_chain(chain)
+z_ests = get_z_ests(z_chain)
 
-maxidx = map(x -> findmax(x[2])[2], rles)
-z_ests = @as z_ests map(x -> x[1], rles) begin
-        @>> map( (x,y) -> x[y], z_ests, maxidx)
-        @> reshape(z_ests, (n,))
-end
 
 # Test for reasonable parameter estimates and classification accuracy
 mutest = isapprox.(hcat(mu_ests...)', mu0; atol = .1);
@@ -229,6 +175,10 @@ correct_class = sum(z_ests[collect(1:1:sum(zprop.==1))] .== 1) +
         @test correct_class >= (.9*n)
 end;
 
+acpttest = isapprox.(mapslices(x -> mean(x), acpt_chain[2:3,500:end]; dims = 2), .3; atol = .1)
+@testset "adaptively tuning proposal degrees of freedom properly" begin
+        [@test x for x in acpttest]
+end;
 
 """
 These are tests for the constrained distributions

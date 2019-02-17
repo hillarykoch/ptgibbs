@@ -26,11 +26,13 @@ Running the MCMC... 100%|██████████████████�
 
 Test Summary:                  | Pass  Total
 reasonable parameter estimates |   19     19
+Test Summary:                                          | Pass  Total
+adaptively tuning proposal degrees of freedom properly |    2      2
 Test Summary:            | Pass  Total
 unbiased random matrices |   11     11
 Test Summary:                         | Pass  Total
 0 and 1 constraints correctly imposed |    7      7
-Testing ptgibbs tests passed
+   Testing ptgibbs tests passed 
 ```
 
 

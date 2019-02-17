@@ -176,7 +176,7 @@ correct_class = sum(z_ests[collect(1:1:sum(zprop.==1))] .== 1) +
         @test correct_class >= (.9*n)
 end;
 
-acpttest = isapprox.(mapslices(x -> mean(x), acpt_chain[2:3,500:end]; dims = 2), .3; atol = .1)
+acpttest = isapprox.(mapslices(x -> mean(x), acpt_chain[2:3,500:end]; dims = 2), .3; atol = .05)
 @testset "adaptively tuning proposal degrees of freedom properly" begin
         [@test x for x in acpttest]
 end;

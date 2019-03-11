@@ -3,6 +3,7 @@ module ptgibbs
 include("constrained_distributions.jl")
 include("helpers.jl")
 include("processors.jl")
+include("plotters.jl")
 
 import StatsBase: rle, pweights
 import RLEVectors: rep

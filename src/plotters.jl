@@ -80,6 +80,7 @@ function plot_eigvec(chain, m::Int64, labs::Array{String,1}, eig_num::Int64; pal
         (p, sort(evals; rev=true))
 end
 
+export plot_effects
 function plot_effects(chain, obsidx::Int64, labs::Array{String,1}, M::Int64; pal = missing)
         z_chain = get_z_chain(chain)
         #MAPs = mapslices(x -> [ mean(x .== y) for y in sort(unique(z_chain)) ], z_chain; dims = 2)

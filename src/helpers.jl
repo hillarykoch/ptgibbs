@@ -1,5 +1,7 @@
 using ProgressMeter
 
+import DataFrames: DataFrame, colwise
+
 export tapply_mean
 function tapply_mean(subs, val, sz=(maximum(subs),))
     A = zeros(eltype(val), sz...)

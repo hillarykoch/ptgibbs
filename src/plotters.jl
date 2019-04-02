@@ -1,9 +1,9 @@
 using Gadfly
 using Statistics
-using Distances
 using Clustering
 using DataFrames
 
+import Distances: pairwise, Euclidean
 import StatsBase: cov2cor
 import RLEVectors: rep
 

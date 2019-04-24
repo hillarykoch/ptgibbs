@@ -47,9 +47,16 @@ function plot_corr(chain, m::Int64, labs::Array{String,1}; reorder = true, key =
 end
 
 export plot_eigvec
-function plot_eigvec(chain, m::Int64, labs::Array{String,1}, eig_num::Int64; pal=missing)
+function plot_eigvec(chain, m::Int64, labs::Array{String,1}, eig_num::Int64; pal=missing, reorder=missing)
         Schain = get_Sigma_chain(chain, m)
         covmat = mapslices(x -> mean(x), Schain; dims = 3)[:,:,1]
+
+        if !ismissing(reorder)
+                covmat = covmat[reorder,reorder]
+                labs = labs[reorder]
+                pal = pal[reorder]
+        end
+
         evals, evecs = (eigvals(covmat), eigvecs(covmat))
 
         # Make names dataframe so plot has names

@@ -41,7 +41,7 @@ function plot_corr(chain, m::Int64, labs::Array{String,1}; reorder = true, key =
         Geom.rectbin,
         Coord.cartesian(fixed = true),
         Guide.xlabel(nothing), Guide.ylabel(nothing),
-        Scale.color_continuous(minvalue=min_value, maxvalue=max_value),
+        Scale.color_continuous(minvalue=min_value, maxvalue=max_value, colormap = Scale.lab_gradient("white", "red")),
         Guide.colorkey(title=""),
         key ? Theme(key_position = :right) : Theme(key_position = :none))
 end
@@ -90,7 +90,6 @@ end
 export plot_effects
 function plot_effects(chain, obsidx::Int64, labs::Array{String,1}, M::Int64, mu_ests; pal = missing)
         z_chain = get_z_chain(chain)
-        #MAPs = mapslices(x -> [ mean(x .== y) for y in sort(unique(z_chain)) ], z_chain; dims = 2)
         MAPs = mapslices(x -> [ mean(x .== y) for y in 1:M ], z_chain; dims = 2)
         emap = MAPs[obsidx,:]
 

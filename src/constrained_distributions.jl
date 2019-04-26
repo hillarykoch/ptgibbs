@@ -2,12 +2,12 @@ using Distributions
 using LinearAlgebra
 
 export test_Bmn
-function test_Bmn(A::Array{Float64,2}, U::UpperTriangular{Float64,Array{Float64,2}}, m::Int64, n::Int64)
+function test_Bmn(tempA::Array{Float64,2}, U::UpperTriangular{Float64,Array{Float64,2}}, mstar::Int64, nstar::Int64)
     # WLOG, m < n
-    subA = @views @inbounds A[1:1:n, 1:1:n]
-    subU = @views @inbounds U[1:1:n, 1:1:n]
+    subA = @views @inbounds tempA[1:1:nstar, 1:1:nstar]
+    subU = @views @inbounds U[1:1:nstar, 1:1:nstar]
 
-    @inbounds ( subU' * subA * subA' * subU )[m, n]
+    @inbounds ( subU' * subA * subA' * subU )[mstar, nstar]
 end
 
 export rand_constrained_Wish
@@ -21,8 +21,9 @@ function rand_constrained_Wish(Psi0, nu, h)
 
     # On real data, force 0s and 1s where necessary
     # It's like we don't even sample this which is ok I think
-    zeroidx = findall(h .== 0)
     dm = size(Psi0, 1)
+    zeroidx = findall(h .== 0)
+    nonzeroidx = setdiff(1:1:dm, zeroidx)
 
     if size(zeroidx,1) == dm
         return Matrix{Float64}(I, dm, dm) * nu
@@ -30,8 +31,8 @@ function rand_constrained_Wish(Psi0, nu, h)
         subh = h
         subPsi0 = Psi0
     else
-        subh = h[setdiff(1:1:dm, zeroidx)]
-        subPsi0 = @inbounds Psi0[setdiff(1:1:dm, zeroidx), setdiff(1:1:dm, zeroidx)]
+        subh = h[nonzeroidx]
+        subPsi0 = @inbounds Psi0[nonzeroidx, nonzeroidx]
     end
 
     subdm = size(subPsi0, 1)
@@ -57,24 +58,31 @@ function rand_constrained_Wish(Psi0, nu, h)
         end
     end
 
+    if size(zeroidx, 1) > 0
+        rmpairs = findall(mapslices(x -> size(intersect(x, zeroidx), 1), dimpairs; dims = 2)[:,1] .!= 0)
+        dimpairs = dimpairs[setdiff(1:1:npairs, rmpairs), :]
+        npairs = size(dimpairs,1)
+    end
+
     # Simulate the IW matrix, starting from the top left corner
     # and working our way down
     for i = 1:1:npairs
         @inbounds m = dimpairs[i,1]
         @inbounds n = dimpairs[i,2]
-        if @inbounds h[m] * h[n] != 0
-            #global A
-            pass = false
-            while !pass
-                samp = rand(Normal())
-                Atest = A
+        #global A
+        pass = false
+        while !pass
+            samp = rand(Normal())
+            Atest = A
 
-                @inbounds Atest[n, m] = samp
-                testbmn = test_Bmn(Atest, U, m, n)
-                if sign(testbmn) == @inbounds sign(h[m] *h[n])
-                    pass = true
-                    A = deepcopy(Atest)
-                end
+            nstar = findall(nonzeroidx .== n)[1]
+            mstar = findall(nonzeroidx .== m)[1]
+
+            @inbounds Atest[nstar, mstar] = samp
+            testbmn = test_Bmn(Atest, U, nstar, mstar)
+            if sign(testbmn) == @inbounds sign(h[m] * h[n])
+                pass = true
+                A = deepcopy(Atest)
             end
         end
     end
@@ -84,7 +92,7 @@ function rand_constrained_Wish(Psi0, nu, h)
     else
         matmult = (U' * A * A' * U)
         out = Matrix{Float64}(I, dm, dm)
-        out[setdiff(1:1:dm, zeroidx), setdiff(1:1:dm, zeroidx)] = matmult
+        out[nonzeroidx, nonzeroidx] = matmult
 
         [out[zz, zz] = nu for zz in zeroidx]
         return out

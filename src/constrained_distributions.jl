@@ -101,7 +101,7 @@ end
 
 
 export rand_constrained_MVN
-function alt_rand_constrained_MVN(Sigma, mu0, h)
+function rand_constrained_MVN(Sigma, mu0, h)
     dm = size(Sigma, 1)
     zeroidx = findall(h .== 0)
     nonzeroidx = setdiff(1:1:dm, zeroidx)

@@ -269,16 +269,16 @@ function make_mcmc_move(dat::DataFrame,
 
     # For each walker, for each cluster, sample a covariance from the cWISH
     for i in 1:nw
-        rles = @> begin
-                @inbounds z[i]
-                @>sort()
-                @>rle()
-            end
-        nz = zeros(nm)
-        @inbounds nz[rles[1]] = rles[2]
+            rles = @> begin
+                    @inbounds z[i]
+                    @>sort()
+                    @>rle()
+                end
+            nz = zeros(nm)
+            @inbounds nz[rles[1]] = rles[2]
 
-        mu_hats = map(x -> get(x, "mu", 0), NIW[i,1])
-        curr_Sigmas = map(x -> get(x, "Sigma", 0), NIW[i,1])
+            mu_hats = map(x -> get(x, "mu", 0), NIW[i,1])
+            curr_Sigmas = map(x -> get(x, "Sigma", 0), NIW[i,1])
         for m in 1:nm
             # Draw Sigma star from constrained Wishart distribution
             Sigma_star = @inbounds propose_Sigma(curr_Sigmas[m], labels[m], tune_df[m])

@@ -101,31 +101,48 @@ end
 
 
 export rand_constrained_MVN
-function rand_constrained_MVN(Sigma, mu0, h)
-    dm = size(h,1)
-
-    A = cholesky(Hermitian(Sigma)).L
-
+function alt_rand_constrained_MVN(Sigma, mu0, h)
+    dm = size(Sigma, 1)
     zeroidx = findall(h .== 0)
-    sz = size(zeroidx,1)
-    if sz > 0
-        [A[zz, :] = zeros(dm) for zz in zeroidx]
-        [A[:, zz] = zeros(dm) for zz in zeroidx]
-        [A[zz,zz] = 1 for zz in zeroidx]
+    nonzeroidx = setdiff(1:1:dm, zeroidx)
+
+    if size(zeroidx,1) == dm
+        return zeros(dm)
+    elseif size(zeroidx,1) == 0
+        subh = h
+        subSigma = Sigma
+        submu0 = mu0
+    else
+        subh = @inbounds h[nonzeroidx]
+        subSigma = @inbounds Sigma[nonzeroidx, nonzeroidx]
+        submu0 = @inbounds mu0[nonzeroidx]
     end
 
-    # Find lower/upper bound for z
-    lub = inv(Matrix(A)) * (-1 * mu0)
+    subdm = size(nonzeroidx, 1)
+    A = cholesky(Hermitian(subSigma)).L
 
-    # Simulate truncated normal noise
-    z = [ ( sign(h[b]) == 1 ? rand(Truncated(Normal(), lub[b], Inf)) :
-            rand(Truncated(Normal(), -Inf, lub[b])) ) for b in 1:1:dm]
+    z = Array{Float64,1}(undef, subdm)
+    for i in 1:1:subdm
+        bound = -mu0[i]
+        for j in 1:1:i
+            if j == i
+                #bound /= A[i,i]
+                bound = bound / A[i,i]
+            else
+                #bound -= (A[i,j] * z[j])
+                bound = bound - (A[i,j] * z[j])
+            end
+        end
 
-    # Adjust the sign as appropriate
-    if sz > 0
-        z[zeroidx] = zeros(sz)
-        mu0[zeroidx] = zeros(sz)
+        if subh[i] == 1
+            z[i] = rand(Truncated(Normal(), bound, Inf))
+        else
+            z[i] = rand(Truncated(Normal(), -Inf, bound))
+        end
+        bound = nothing
     end
 
-    A * z .+ mu0
+    zout = zeros(dm)
+    zout[nonzeroidx] = z
+    A * zout .+ mu0
 end

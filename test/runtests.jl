@@ -190,7 +190,24 @@ h1 = [1,-1,0]
 Psi02 = reshape([1.1,-.7,-.4,0,-.7,.9,.8,0,-.4,.8,1.2,0,0,0,0,1], (4,4))
 h2 = [1,-1,-1,0]
 
-# Simulate NIW data
+#mu02 = [.5, -.2, -.4, 1.1]
+#h2 = [1,-1,-1,1]
+#Psi02 = reshape([1.1,-.7,-.4,.3,-.7,.9,.8,-.4,-.4,.8,1.2,-.3,.3,-.4,-.3,1.3], (4,4))
+
+#nsim2 = [ alt_rand_constrained_MVN(Psi02, mu02, h2) for i=1:100000 ]
+#nsim22 = [ rand(MvNormal(mu02, Psi02)) for i=1:100000 ]
+#p1 = plot(x = (hcat(nsim2...)[2,:])', y = (hcat(nsim2...)[3,:])', Geom.density2d, Theme(key_position = :none))
+#p2 = plot(x = (hcat(nsim22...)[2,:])',
+        #y = (hcat(nsim22...)[3,:])',
+        #xintercept = [0],
+        #yintercept = [0],
+        #Geom.vline,
+        #Geom.hline,
+        #Geom.density2d,
+        #Theme(key_position = :none))
+#hstack(p1,p2)
+
+# Simulate constrained Wishart data
 sim1 = [rand_constrained_Wish(Psi01, nu, h1) for i=1:10000]
 sim2 = [rand_constrained_Wish(Psi02, nu, h2) for i=1:10000]
 
@@ -239,6 +256,13 @@ otest2 = isequal.(
         ]; digits = 6),
         [0, 0, 0, 1]  .* nu
 )
+
+#@testset "unbiased random vectors" begin
+        #[@test x for x in mvn_meantest1]
+        #[@test x for x in mvn_meantest2]
+        #[@test x for x in mvn_covtest1]
+        #[@test x for x in mvn_covtest2]
+#end
 
 @testset "unbiased random matrices" begin
         [@test x for x in meantest1]

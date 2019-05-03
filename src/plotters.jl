@@ -7,7 +7,7 @@ import Distances: pairwise, Euclidean
 import StatsBase: cov2cor
 import RLEVectors: rep
 
-include("helpers.jl")
+#include("helpers.jl")
 
 export plot_corr
 function plot_corr(chain, m::Int64, labs::Array{String,1}; reorder = true, key = false, min_value = -1, max_value = 1, linkage = :ward)

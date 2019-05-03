@@ -142,7 +142,8 @@ function rand_constrained_MVN(Sigma, mu0, h)
         bound = nothing
     end
 
-    zout = zeros(dm)
-    zout[nonzeroidx] = z
-    A * zout .+ mu0
+    subout = A * z .+ submu0
+    out = zeros(dm)
+    out[nonzeroidx] = subout
+    out
 end

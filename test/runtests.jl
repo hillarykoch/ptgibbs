@@ -190,22 +190,49 @@ h1 = [1,-1,0]
 Psi02 = reshape([1.1,-.7,-.4,0,-.7,.9,.8,0,-.4,.8,1.2,0,0,0,0,1], (4,4))
 h2 = [1,-1,-1,0]
 
-#mu02 = [.5, -.2, -.4, 1.1]
+##mu02 = [.5, -.2, -.4, 1.1]
+#mu02 = [11, -20, -15, 12]
 #h2 = [1,-1,-1,1]
-#Psi02 = reshape([1.1,-.7,-.4,.3,-.7,.9,.8,-.4,-.4,.8,1.2,-.3,.3,-.4,-.3,1.3], (4,4))
-
-#nsim2 = [ alt_rand_constrained_MVN(Psi02, mu02, h2) for i=1:100000 ]
-#nsim22 = [ rand(MvNormal(mu02, Psi02)) for i=1:100000 ]
-#p1 = plot(x = (hcat(nsim2...)[2,:])', y = (hcat(nsim2...)[3,:])', Geom.density2d, Theme(key_position = :none))
-#p2 = plot(x = (hcat(nsim22...)[2,:])',
-        #y = (hcat(nsim22...)[3,:])',
+##Psi02 = reshape([1.1,-.7,-.4,.3,-.7,.9,.8,-.4,-.4,.8,1.2,-.3,.3,-.4,-.3,1.3], (4,4))
+#Psi02 = reshape([1.1,-.9,-.8,.8,-.9,1,.8,-.7,-.8,.8,1.2,-.65,.8,-.7,-.65,1.1], (4,4))
+#
+#nsim2 = [ rand_constrained_MVN(Psi02, mu02, h2) for i=1:1000000 ]
+#nsim22 = [ rand(MvNormal(mu02, Psi02)) for i=1:1000000 ]
+#
+#subnsim22 = (hcat(nsim22...)[[3,4],:])'
+#sub = zeros(size(subnsim22))
+#for i in 1:size(subnsim22, 1)
+        #if subnsim22[i,1] < 0 && subnsim22[i,2] > 0
+                #sub[i,:] = subnsim22[i,:]
+        #end
+#end
+#sub = sub[mapslices(x -> all(x .!= 0), sub; dims = 2)[:,1],:]
+#
+#
+#p1 = plot(x = (hcat(nsim2...)[3,:])',
+                #y = (hcat(nsim2...)[4,:])',
+                #xintercept = [0],
+                #yintercept = [0],
+                #Geom.vline,
+                #Geom.hline,
+                #Geom.density2d,
+                #Coord.cartesian(xmin = -20, xmax = -10, ymin = 8, ymax = 15),
+                #Guide.title("MV constrained normal"),
+                #Theme(key_position = :none));
+#p2 = plot(x = sub[:,1],
+        #y = sub[:,2],
         #xintercept = [0],
         #yintercept = [0],
         #Geom.vline,
         #Geom.hline,
         #Geom.density2d,
-        #Theme(key_position = :none))
+        #Coord.cartesian(xmin = -20, xmax = -10, ymin = 8, ymax = 15),
+        #Guide.title("MV normal"),
+        #Theme(key_position = :none));
+#
+### p1 is simulated from my function, p2 is subsample of MVN
 #hstack(p1,p2)
+#Compose.draw(Compose.PDF("bigmean.pdf", 10inch, 7inch), hstack(p1,p2))
 
 # Simulate constrained Wishart data
 sim1 = [rand_constrained_Wish(Psi01, nu, h1) for i=1:10000]

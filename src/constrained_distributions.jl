@@ -124,14 +124,10 @@ function rand_constrained_MVN(Sigma, mu0, h)
     z = Array{Float64,1}(undef, subdm)
     for i in 1:1:subdm
         bound = -mu0[i]
-        for j in 1:1:i
-            if j == i
-                #bound /= A[i,i]
-                bound = bound / A[i,i]
-            else
-                #bound -= (A[i,j] * z[j])
-                bound = bound - (A[i,j] * z[j])
-            end
+        if i == 1
+            bound /= A[i,i]
+        else
+            bound = @inbounds (bound - A[i,1:1:(i-1)]' * z[1:1:(i-1)]) / A[i,i]
         end
 
         if subh[i] == 1

@@ -10,7 +10,7 @@ import RLEVectors: rep
 #include("helpers.jl")
 
 export plot_corr
-function plot_corr(chain, m::Int64, labs::Array{String,1}; reorder = true, key = false, min_value = -1, max_value = 1, linkage = :ward)
+function plot_corr(chain, m::Int64, labs::Array{String,1}; reorder = true, key = false, min_value = -1, max_value = 1, linkage = :ward, reds = false)
 """
     Plot various correlation matrices
     1. Obtain some covariance chain and average over the estimates
@@ -37,13 +37,23 @@ function plot_corr(chain, m::Int64, labs::Array{String,1}; reorder = true, key =
     df = DataFrame(cormat[ordering, ordering], Symbol.(labs[ordering]))
     molten = melt(df)
     molten.v2 = rep(labs[ordering], times = size(df,1))
-    Gadfly.plot(molten, x="variable", y="v2", color="value",
-        Geom.rectbin,
-        Coord.cartesian(fixed = true),
-        Guide.xlabel(nothing), Guide.ylabel(nothing),
-        Scale.color_continuous(minvalue=min_value, maxvalue=max_value, colormap = Scale.lab_gradient("white", "red")),
-        Guide.colorkey(title=""),
-        key ? Theme(key_position = :right) : Theme(key_position = :none))
+    if reds
+            Gadfly.plot(molten, x="variable", y="v2", color="value",
+                Geom.rectbin,
+                Coord.cartesian(fixed = true),
+                Guide.xlabel(nothing), Guide.ylabel(nothing),
+                Scale.color_continuous(minvalue=min_value, maxvalue=max_value colormap = Scale.lab_gradient("white", "red")),
+                Guide.colorkey(title=""),
+                key ? Theme(key_position = :right) : Theme(key_position = :none))
+        else
+                Gadfly.plot(molten, x="variable", y="v2", color="value",
+                    Geom.rectbin,
+                    Coord.cartesian(fixed = true),
+                    Guide.xlabel(nothing), Guide.ylabel(nothing),
+                    Scale.color_continuous(minvalue=min_value, maxvalue=max_value),
+                    Guide.colorkey(title=""),
+                    key ? Theme(key_position = :right) : Theme(key_position = :none))
+        end
 end
 
 export plot_eigvec

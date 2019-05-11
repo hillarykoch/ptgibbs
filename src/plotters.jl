@@ -42,7 +42,7 @@ function plot_corr(chain, m::Int64, labs::Array{String,1}; reorder = true, key =
                 Geom.rectbin,
                 Coord.cartesian(fixed = true),
                 Guide.xlabel(nothing), Guide.ylabel(nothing),
-                Scale.color_continuous(minvalue=min_value, maxvalue=max_value colormap = Scale.lab_gradient("white", "red")),
+                Scale.color_continuous(minvalue=min_value, maxvalue=max_value, colormap = Scale.lab_gradient("white", "red")),
                 Guide.colorkey(title=""),
                 key ? Theme(key_position = :right) : Theme(key_position = :none))
         else

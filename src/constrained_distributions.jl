@@ -1,6 +1,7 @@
 using Distributions
 using LinearAlgebra
 
+export rand_constrained_Wish
 function rand_constrained_Wish(Psi0, nu, h)
     """
     Psi0 is some pos-def matrix that complies with restrictions imposed by h

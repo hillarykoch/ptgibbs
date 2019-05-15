@@ -1,16 +1,6 @@
 using Distributions
 using LinearAlgebra
 
-export test_Bmn
-function test_Bmn(tempA::Array{Float64,2}, U::UpperTriangular{Float64,Array{Float64,2}}, mstar::Int64, nstar::Int64)
-    # WLOG, m < n
-    subA = @views @inbounds tempA[1:1:nstar, 1:1:nstar]
-    subU = @views @inbounds U[1:1:nstar, 1:1:nstar]
-
-    @inbounds ( subU' * subA * subA' * subU )[mstar, nstar]
-end
-
-export rand_constrained_Wish
 function rand_constrained_Wish(Psi0, nu, h)
     """
     Psi0 is some pos-def matrix that complies with restrictions imposed by h
@@ -66,24 +56,74 @@ function rand_constrained_Wish(Psi0, nu, h)
 
     # Simulate the IW matrix, starting from the top left corner
     # and working our way down
-    for i = 1:1:npairs
-        @inbounds m = dimpairs[i,1]
-        @inbounds n = dimpairs[i,2]
-        #global A
-        pass = false
-        while !pass
-            samp = rand(Normal())
-            Atest = A
+    for idx = 1:1:npairs
+        @inbounds m = dimpairs[idx,1]
+        @inbounds p = dimpairs[idx,2]
 
-            nstar = findall(nonzeroidx .== n)[1]
-            mstar = findall(nonzeroidx .== m)[1]
+        mstar = findall(nonzeroidx .== m)[1]
+        pstar = findall(nonzeroidx .== p)[1]
 
-            @inbounds Atest[nstar, mstar] = samp
-            testbmn = test_Bmn(Atest, U, mstar, nstar)
-            if sign(testbmn) == @inbounds sign(h[m] * h[n])
-                pass = true
-                A = deepcopy(Atest)
+        #@inbounds Atest[nstar, mstar] = samp
+
+        # Compute bounds on A[m,n]
+        term1 = 0.0
+        term2 = 0.0
+        outterm1 = 0.0
+        if m == 1
+            premult = U[mstar,mstar] * A[mstar,mstar]
+
+            term4 = 0.0
+            for i in mstar:(pstar-1)
+                #global term4
+                term4 += U[i,pstar] * A[i,mstar]
             end
+            outterm4 = premult * term4
+            denom = premult * U[pstar,pstar]
+
+            if @inbounds sign(h[m] * h[p]) == -1
+                lb = @inbounds (-Inf - outterm4) / denom
+                ub = @inbounds (0 - outterm4) / denom
+            else
+                lb = @inbounds (0 - outterm4) / denom
+                ub = @inbounds (Inf - outterm4) / denom
+            end
+            llb = min(lb, ub)
+            uub = max(lb, ub)
+            @inbounds A[pstar,mstar] = rand(Truncated(Normal(), llb, uub))
+        else
+            for k in 1:(mstar-1)
+                for j in k:mstar
+                    #global term1
+                    term1 += U[j,mstar] * A[j,k]
+                end
+                for i in k:pstar
+                    #global term2
+                    term2 += U[i,pstar] * A[i,k]
+                end
+                #global outterm1
+                outterm1 += (term1 * term2)
+            end
+
+            premult = U[mstar,mstar] * A[mstar,mstar]
+
+            term4 = 0.0
+            for i in m:(pstar-1)
+                #global term4
+                term4 += U[i,pstar] * A[i,mstar]
+            end
+            outterm4 = premult * term4
+            denom = premult * U[pstar,pstar]
+
+            if @inbounds sign(h[m] * h[p]) == -1
+                lb = @inbounds (-Inf - outterm1 - outterm4) / denom
+                ub = @inbounds (0 - outterm1 - outterm4) / denom
+            else
+                lb = @inbounds (0 - outterm1 - outterm4) / denom
+                ub = @inbounds (Inf - outterm1 - outterm4) / denom
+            end
+            llb = min(lb, ub)
+            uub = max(lb, ub)
+            @inbounds A[pstar,mstar] = rand(Truncated(Normal(), llb, uub))
         end
     end
 
@@ -98,7 +138,6 @@ function rand_constrained_Wish(Psi0, nu, h)
         return out
     end
 end
-
 
 export rand_constrained_MVN
 function rand_constrained_MVN(Sigma, mu0, h)

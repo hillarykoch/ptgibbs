@@ -65,12 +65,8 @@ function rand_constrained_Wish(Psi0, nu, h)
         pstar = findall(nonzeroidx .== p)[1]
 
         # Compute bounds on A[m,n]
-        term1 = 0.0
-        term2 = 0.0
-        outterm1 = 0.0
         if m == 1
             @inbounds premult = U[mstar,mstar] * A[mstar,mstar]
-
             term4 = 0.0
             for i in mstar:(pstar-1)
                 #global term4
@@ -90,40 +86,40 @@ function rand_constrained_Wish(Psi0, nu, h)
             @inbounds A[pstar,mstar] = rand(Truncated(Normal(), lb, ub))
         else
             term1 = 0.0
-            for k in 1:(m-1)
+            for k in 1:(mstar-1)
                 outerterm = 0.0
                 for j in 1:k
                     innerterm = 0.0
-                    for i in j:p
-                        @inbounds innerterm += (A[i,j] * U[i,p])
+                    for i in j:pstar
+                        @inbounds innerterm += (A[i,j] * U[i,pstar])
                     end
                     @inbounds outerterm += (innerterm * A[k,j])
                 end
-                @inbounds term1 += (U[k,m] * outerterm)
+                @inbounds term1 += (U[k,mstar] * outerterm)
             end
 
             outerterm2 = 0.0
-            for j in 1:(m-1)
+            for j in 1:(mstar-1)
                 innerterm2 = 0.0
-                for i in j:p
-                    @inbounds innerterm2 += (A[i,j] * U[i,p])
+                for i in j:pstar
+                    @inbounds innerterm2 += (A[i,j] * U[i,pstar])
                 end
-                @inbounds outerterm2 += (innerterm2 * A[m,j])
+                @inbounds outerterm2 += (innerterm2 * A[mstar,j])
             end
-            @inbounds term2 = U[m,m] * outerterm2
+            @inbounds term2 = U[mstar,mstar] * outerterm2
 
             term3 = 0.0
             for i in m:(p-1)
-                @inbounds term3 += (A[i,m] * U[i,p])
+                @inbounds term3 += (A[i,mstar] * U[i,pstar])
             end
-            @inbounds term3 *= (A[m,m] * U[m,m])
+            @inbounds term3 *= (A[mstar,mstar] * U[mstar,mstar])
 
 
             if @inbounds sign(h[m] * h[p]) == -1
                 lb = -Inf
-                ub = @inbounds ((-term1 - term - term3) / (U[p,p] * U[m,m] * A[m,m]) )
+                ub = @inbounds ((-term1 - term2 - term3) / (U[pstar,pstar] * U[mstar,mstar] * A[mstar,mstar]) )
             else
-                lb = @inbounds ((-term1 - term - term3) / (U[p,p] * U[m,m] * A[m,m]) )
+                lb = @inbounds ((-term1 - term2 - term3) / (U[pstar,pstar] * U[mstar,mstar] * A[mstar,mstar]) )
                 ub = Inf
             end
             #llb = min(lb, ub)

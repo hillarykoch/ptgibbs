@@ -190,9 +190,24 @@ h1 = [1,-1,0]
 Psi02 = reshape([1.1,-.7,-.4,0,-.7,.9,.8,0,-.4,.8,1.2,0,0,0,0,1], (4,4))
 h2 = [1,-1,-1,0]
 
+#Psi02 = reshape(
+    #[2, .3,-.6,-.8,
+      #.3, 1.5,-.75,-.1,
+      #-.6,-.75, 1.5, .4,
+      #-.8,-.1, .4, 2],
+    #(4,4)
+#)
+#h2 = [1,1,-1,-1]
+#nu = 25
+
 # Simulate constrained Wishart data
 sim1 = [rand_constrained_Wish(Psi01, nu, h1) for i=1:10000]
 sim2 = [rand_constrained_Wish(Psi02, nu, h2) for i=1:10000]
+
+#using Gadfly
+#d1 = map(x -> x[2,4,], sim2)
+#d2 = map(x -> x[3,4,], sim2)
+#Gadfly.plot(x = d1[1:2000], y = d2[1:2000], Geom.point)
 
 meantest1 = isapprox.([
                 mean(map(x -> x[1,1], sim1)),
@@ -258,3 +273,5 @@ end
         [@test x for x in otest1]
         [@test x for x in otest2]
 end
+
+Gadfly.plot()

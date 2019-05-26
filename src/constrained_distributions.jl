@@ -36,7 +36,7 @@ function rand_constrained_Wish(Psi0, nu, h)
         A[i,i] = sqrt(rand(Chisq(nu - i + 1)))
     end
 
-    # Construst the pairs of dimensions of A
+    # Construct the pairs of dimensions of A
     # in the order in which we need to simulate them
     npairs = binomial(dm,2)
     dimpairs = Matrix{Int64}(undef, npairs, 2)
@@ -64,67 +64,72 @@ function rand_constrained_Wish(Psi0, nu, h)
         mstar = findall(nonzeroidx .== m)[1]
         pstar = findall(nonzeroidx .== p)[1]
 
-        #@inbounds Atest[nstar, mstar] = samp
-
         # Compute bounds on A[m,n]
         term1 = 0.0
         term2 = 0.0
         outterm1 = 0.0
         if m == 1
-            premult = U[mstar,mstar] * A[mstar,mstar]
+            @inbounds premult = U[mstar,mstar] * A[mstar,mstar]
 
             term4 = 0.0
             for i in mstar:(pstar-1)
                 #global term4
-                term4 += U[i,pstar] * A[i,mstar]
+                @inbounds term4 += U[i,pstar] * A[i,mstar]
             end
-            outterm4 = premult * term4
-            denom = premult * U[pstar,pstar]
 
             if @inbounds sign(h[m] * h[p]) == -1
-                lb = @inbounds (-Inf - outterm4) / denom
-                ub = @inbounds (0 - outterm4) / denom
+                lb = -Inf
+                ub = @inbounds ( -term4 ) / U[pstar, pstar]#(0 - outterm4) / denom
             else
-                lb = @inbounds (0 - outterm4) / denom
-                ub = @inbounds (Inf - outterm4) / denom
+                lb = @inbounds ( -term4 ) / U[pstar, pstar]#(0 - outterm4) / denom
+                ub = Inf
             end
-            llb = min(lb, ub)
-            uub = max(lb, ub)
-            @inbounds A[pstar,mstar] = rand(Truncated(Normal(), llb, uub))
+            #llb = min(lb, ub)
+            #uub = max(lb, ub)
+            #@inbounds A[pstar,mstar] = rand(Truncated(Normal(), llb, uub))
+            @inbounds A[pstar,mstar] = rand(Truncated(Normal(), lb, ub))
         else
-            for k in 1:(mstar-1)
-                for j in k:mstar
-                    #global term1
-                    term1 += U[j,mstar] * A[j,k]
+            term1 = 0.0
+            for k in 1:(m-1)
+                outerterm = 0.0
+                for j in 1:k
+                    innerterm = 0.0
+                    for i in j:p
+                        @inbounds innerterm += (A[i,j] * U[i,p])
+                    end
+                    @inbounds outerterm += (innerterm * A[k,j])
                 end
-                for i in k:pstar
-                    #global term2
-                    term2 += U[i,pstar] * A[i,k]
-                end
-                #global outterm1
-                outterm1 += (term1 * term2)
+                @inbounds term1 += (U[k,m] * outerterm)
             end
 
-            premult = U[mstar,mstar] * A[mstar,mstar]
-
-            term4 = 0.0
-            for i in m:(pstar-1)
-                #global term4
-                term4 += U[i,pstar] * A[i,mstar]
+            outerterm2 = 0.0
+            for j in 1:(m-1)
+                innerterm2 = 0.0
+                for i in j:p
+                    @inbounds innerterm2 += (A[i,j] * U[i,p])
+                end
+                @inbounds outerterm2 += (innerterm2 * A[m,j])
             end
-            outterm4 = premult * term4
-            denom = premult * U[pstar,pstar]
+            @inbounds term2 = U[m,m] * outerterm2
+
+            term3 = 0.0
+            for i in m:(p-1)
+                @inbounds term3 += (A[i,m] * U[i,p])
+            end
+            @inbounds term3 *= (A[m,m] * U[m,m])
+
 
             if @inbounds sign(h[m] * h[p]) == -1
-                lb = @inbounds (-Inf - outterm1 - outterm4) / denom
-                ub = @inbounds (0 - outterm1 - outterm4) / denom
+                lb = -Inf
+                ub = @inbounds ((-term1 - term - term3) / (U[p,p] * U[m,m] * A[m,m]) )
             else
-                lb = @inbounds (0 - outterm1 - outterm4) / denom
-                ub = @inbounds (Inf - outterm1 - outterm4) / denom
+                lb = @inbounds ((-term1 - term - term3) / (U[p,p] * U[m,m] * A[m,m]) )
+                ub = Inf
             end
-            llb = min(lb, ub)
-            uub = max(lb, ub)
-            @inbounds A[pstar,mstar] = rand(Truncated(Normal(), llb, uub))
+            #llb = min(lb, ub)
+            #uub = max(lb, ub)
+            #@inbounds A[pstar,mstar] = rand(Truncated(Normal(), llb, uub))
+            @inbounds A[pstar,mstar] = rand(Truncated(Normal(), lb, ub))
         end
     end
 

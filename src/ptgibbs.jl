@@ -282,22 +282,39 @@ function make_mcmc_move(dat::DataFrame,
         for m in 1:nm
             # Draw Sigma star from constrained Wishart distribution
             Sigma_star = @inbounds propose_Sigma(curr_Sigmas[m], labels[m], tune_df[m])
-            lhaste = @inbounds get_lhastings(curr_Sigmas[m], Sigma_star, tune_df[m])
 
-            # Compute the log prior for this proposal - log prior for the current estimate
-            lp = @inbounds logprior(Matrix(Hermitian(curr_Sigmas[m])), Matrix(Hermitian(Sigma_star)), mu_hats[m], hyp, m)
+            # Compute the normalizing constants first
+            norm_const_cwish = approx_cwish_norm_const(tune_df[m], curr_Sigmas[m], Sigma_star)
+            norm_const_tmvn = approx_tmvn_norm_const(mu_hats[m], curr_Sigmas[m], Sigma_star)
 
-            # Compute the log likelihood for this proposal - log likelihood for the current estimate
-            ll = @inbounds log_likelihood(dat, param, max(nz[m], kappa0[m]), i, m, Matrix(Hermitian(curr_Sigmas[m])), Matrix(Hermitian(Sigma_star)), mu_hats[m])
-
-            # If random uniform small enough, update Sigma to Sigma_star
-            if log(rand(Uniform(0,1))[1]) < (ll + lp + lhaste)
+            if all([norm_const_cwish, norm_const_tmvn] .== Inf) |
+                logratio = 0
+            else if any([norm_const_cwish, norm_const_tmvn] .== Inf) & all([norm_const_cwish, norm_const_tmvn] .!= 0)
+                # just accept because the ratio will be
                 NIW[i,1][m]["Sigma"] = Sigma_star
                 acpt[m] = 1
+            else if any([norm_const_cwish, norm_const_tmvn] .== -Inf) & all([norm_const_cwish, norm_const_tmvn] .!= 0)
+                # do nothing, we dont update
+            else if any(abs.([norm_const_cwish, norm_const_tmvn]) .== Inf) & any([norm_const_cwish, norm_const_tmvn] .== 0)
+                logratio = 0
+            else
+                logratio = log(norm_const_cwish) + log(norm_const_tmvn)
+                lhaste = @inbounds get_lhastings(curr_Sigmas[m], Sigma_star, tune_df[m])
+
+                # Compute the log prior for this proposal - log prior for the current estimate
+                lp = @inbounds logprior(Matrix(Hermitian(curr_Sigmas[m])), Matrix(Hermitian(Sigma_star)), mu_hats[m], hyp, m)
+
+                # Compute the log likelihood for this proposal - log likelihood for the current estimate
+                ll = @inbounds log_likelihood(dat, param, max(nz[m], kappa0[m]), i, m, Matrix(Hermitian(curr_Sigmas[m])), Matrix(Hermitian(Sigma_star)), mu_hats[m])
+
+                # If random uniform small enough, update Sigma to Sigma_star
+                if log(rand(Uniform(0,1))[1]) < (ll + lp + lhaste)
+                    NIW[i,1][m]["Sigma"] = Sigma_star
+                    acpt[m] = 1
+                end
             end
         end
     end
-
     (NIW, acpt)
 end
 

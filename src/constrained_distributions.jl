@@ -2,7 +2,7 @@ using Distributions
 using LinearAlgebra
 
 export rand_constrained_Wish
-function rand_constrained_Wish(Psi0, nu, h)
+function rand_constrained_Wish(Psi0::Array, nu, h::Array)
     """
     Psi0 is some pos-def matrix that complies with restrictions imposed by h
     dm is the dimension
@@ -142,7 +142,7 @@ function rand_constrained_Wish(Psi0, nu, h)
 end
 
 export rand_constrained_MVN
-function rand_constrained_MVN(Sigma, mu0, h)
+function rand_constrained_MVN(Sigma::Array, mu0::Array, h::Array)
     dm = size(Sigma, 1)
     zeroidx = findall(h .== 0)
     nonzeroidx = setdiff(1:1:dm, zeroidx)

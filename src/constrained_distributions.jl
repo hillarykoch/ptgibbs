@@ -2,7 +2,7 @@ using Distributions
 using LinearAlgebra
 
 export rand_constrained_Wish
-function rand_constrained_Wish(Psi0::Array, nu, h::Array)
+function rand_constrained_Wish(Psi0::Array{Float64,2}, nu::Float64, h::Array{Int64, 1})
     """
     Psi0 is some pos-def matrix that complies with restrictions imposed by h
     dm is the dimension
@@ -13,7 +13,7 @@ function rand_constrained_Wish(Psi0::Array, nu, h::Array)
     # On real data, force 0s and 1s where necessary
     # It's like we don't even sample this which is ok I think
     dm = size(Psi0, 1)
-    zeroidx = findall(h .== 0)
+    zeroidx = findall([ h[i] == 0 for i in 1:dm ])
     nonzeroidx = setdiff(1:1:dm, zeroidx)
 
     if size(zeroidx,1) == dm
@@ -61,11 +61,11 @@ function rand_constrained_Wish(Psi0::Array, nu, h::Array)
         @inbounds m = dimpairs[idx,1]
         @inbounds p = dimpairs[idx,2]
 
-        mstar = findall(nonzeroidx .== m)[1]
-        pstar = findall(nonzeroidx .== p)[1]
+        mstar = findall([ nonzeroidx[i] == m for i in 1:dm ])[1]
+        pstar = findall([ nonzeroidx[i] == p for i in 1:dm ])[1]
 
         # Compute bounds on A[m,n]
-        if m == 1
+        if mstar == 1
             @inbounds premult = U[mstar,mstar] * A[mstar,mstar]
             term4 = 0.0
             for i in mstar:(pstar-1)
@@ -142,9 +142,9 @@ function rand_constrained_Wish(Psi0::Array, nu, h::Array)
 end
 
 export rand_constrained_MVN
-function rand_constrained_MVN(Sigma::Array, mu0::Array, h::Array)
+function rand_constrained_MVN(Sigma::Array{Float64,2}, mu0::Array{Float64,1}, h::Array)
     dm = size(Sigma, 1)
-    zeroidx = findall(h .== 0)
+    zeroidx = findall([ h[i] == 0 for i in 1:dm ])
     nonzeroidx = setdiff(1:1:dm, zeroidx)
 
     if size(zeroidx,1) == dm
@@ -164,23 +164,23 @@ function rand_constrained_MVN(Sigma::Array, mu0::Array, h::Array)
 
     z = Array{Float64,1}(undef, subdm)
     for i in 1:1:subdm
-        bound = -mu0[i]
+        @inbounds bound = -mu0[i]
         if i == 1
-            bound /= A[i,i]
+            @inbounds bound /= A[i,i]
         else
             bound = @inbounds (bound - A[i,1:1:(i-1)]' * z[1:1:(i-1)]) / A[i,i]
         end
 
-        if subh[i] == 1
-            z[i] = rand(Truncated(Normal(), bound, Inf))
+        if @inbounds subh[i] == 1
+            @inbounds z[i] = rand(Truncated(Normal(), bound, Inf))
         else
-            z[i] = rand(Truncated(Normal(), -Inf, bound))
+            @inbounds z[i] = rand(Truncated(Normal(), -Inf, bound))
         end
         bound = nothing
     end
 
     subout = A * z .+ submu0
     out = zeros(dm)
-    out[nonzeroidx] = subout
+    @inbounds out[nonzeroidx] = subout
     out
 end

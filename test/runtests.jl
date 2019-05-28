@@ -78,7 +78,8 @@ end;
 
 nstep = 1000;
 tune_df = rep(1000.0, each = nm)
-chain, acpt_chain, tune_df_chain = run_mcmc(df1[[:x,:y]], param, hyp, alpha, nstep, labels, tune_df);
+chain, acpt_chain, tune_df_chain =
+        run_mcmc(df1[[:x,:y]],param, hyp, alpha, nstep, labels, tune_df);
 
 # Process the output
 norm_chain = map(x -> x[1], chain)
@@ -239,13 +240,6 @@ otest2 = isequal.(
         ]; digits = 6),
         [0, 0, 0, 1]  .* nu
 )
-
-#@testset "unbiased random vectors" begin
-        #[@test x for x in mvn_meantest1]
-        #[@test x for x in mvn_meantest2]
-        #[@test x for x in mvn_covtest1]
-        #[@test x for x in mvn_covtest2]
-#end
 
 @testset "unbiased random matrices" begin
         [@test x for x in meantest1]

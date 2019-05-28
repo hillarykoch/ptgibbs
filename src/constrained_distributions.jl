@@ -65,7 +65,7 @@ function rand_constrained_Wish(Psi0, nu, h)
         pstar = findall(nonzeroidx .== p)[1]
 
         # Compute bounds on A[m,n]
-        if m == 1
+        if mstar == 1
             @inbounds premult = U[mstar,mstar] * A[mstar,mstar]
             term4 = 0.0
             for i in mstar:(pstar-1)
@@ -95,6 +95,7 @@ function rand_constrained_Wish(Psi0, nu, h)
                     end
                     @inbounds outerterm += (innerterm * A[k,j])
                 end
+                #global term1
                 @inbounds term1 += (U[k,mstar] * outerterm)
             end
 
@@ -104,12 +105,14 @@ function rand_constrained_Wish(Psi0, nu, h)
                 for i in j:pstar
                     @inbounds innerterm2 += (A[i,j] * U[i,pstar])
                 end
+                #global outerterm2
                 @inbounds outerterm2 += (innerterm2 * A[mstar,j])
             end
             @inbounds term2 = U[mstar,mstar] * outerterm2
 
             term3 = 0.0
-            for i in m:(p-1)
+            for i in mstar:(pstar-1)
+                #global term3
                 @inbounds term3 += (A[i,mstar] * U[i,pstar])
             end
             @inbounds term3 *= (A[mstar,mstar] * U[mstar,mstar])

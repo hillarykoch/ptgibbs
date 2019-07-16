@@ -191,9 +191,13 @@ function log_likelihood(dat::DataFrame,
         @inbounds ll_mult_star[i] = logpdf(mult_distns_star[i], occ)
     end
 
-    ll_mult = sum(ll_mult_star) - sum(ll_mult_curr)
-
-    ll_normal + ll_mult
+    sum1 = sum(ll_mult_star)
+    sum2 = sum(ll_mult_curr)
+    if isnan(sum1-sum2)
+        return ll_normal
+    else
+        return sum1 - sum2 + ll_normal
+    end
 end
 
 export logprior
